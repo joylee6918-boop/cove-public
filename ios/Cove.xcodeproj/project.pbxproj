@@ -1,0 +1,723 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0217A9E1B27B1476A6C64B06 /* CoveFileUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F5F2C5F063975ECDB146644 /* CoveFileUITests.swift */; };
+		0538F7B7467C06B4EBEC8BA8 /* AttachmentImageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFFA911221DFC42FA737EA9E /* AttachmentImageTests.swift */; };
+		0EAB37E2DCD37005D80352D1 /* RichPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07534B8783E64DFED1471860 /* RichPreview.swift */; };
+		103A22D496719380693F667B /* CoveUsagePresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98E22FD35968DAEC8AC5309D /* CoveUsagePresentationTests.swift */; };
+		119C6D1F2BBCAD86DA1193DC /* CoveCompactTabBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A062ED976C491920D7872962 /* CoveCompactTabBar.swift */; };
+		138DB806F04BD8DB6337D47A /* CoveApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BBBFA2178F6FDB897BA8F0E /* CoveApp.swift */; };
+		1E37E9234FCCF128CC172C8F /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFA252EA52A6537C594965F4 /* Models.swift */; };
+		1F0E2792551EFBF438D73C53 /* CoveUsagePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A71683D24D97740DC075080 /* CoveUsagePresentation.swift */; };
+		2418886D604D3962A0BB58F6 /* CoveWallpaper.swift in Sources */ = {isa = PBXBuildFile; fileRef = D95A2B19D3A5FB9101B8014B /* CoveWallpaper.swift */; };
+		2B245E7FF6578AEC61F555CB /* CoveStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39CB4EC56D665A6B6122B8D7 /* CoveStore.swift */; };
+		3060238F16062180AD630B97 /* cmark-gfm in Frameworks */ = {isa = PBXBuildFile; productRef = 7E5EFD2583E0FDBA9297A78C /* cmark-gfm */; };
+		333EFE6F68EC64C3C5BD59A5 /* CoveChatStyleUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB1B4AC59DA3969214383F5A /* CoveChatStyleUITests.swift */; };
+		37E94486791F55E50B12F576 /* THIRD_PARTY_NOTICES.md in Resources */ = {isa = PBXBuildFile; fileRef = C37CCE1493DEAD4DBE93CFC6 /* THIRD_PARTY_NOTICES.md */; };
+		3C82102340066EE2022B3656 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B9F45C9CBBF04C7806DB3D30 /* Assets.xcassets */; };
+		3FCB4859617134F538BBE384 /* AttachmentViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8377BC3E85AEE179A4DE80A6 /* AttachmentViews.swift */; };
+		42EEF6F94BF7A0AA811067CA /* cmark-gfm-extensions in Frameworks */ = {isa = PBXBuildFile; productRef = CE832F47D22CA2DC59C9969C /* cmark-gfm-extensions */; };
+		43BD2CB7D33B85D0487B95D9 /* CoveTerminalModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2A4CC64432E931CF27015FC /* CoveTerminalModel.swift */; };
+		49636A189E07BA48DFEF9177 /* TerminalContextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF43ECF8BE141F4A657CA694 /* TerminalContextTests.swift */; };
+		4B5E447E4605CA0D0F1C248D /* MessageDisplayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFD6A3A03FACD9F12AE0E8A6 /* MessageDisplayTests.swift */; };
+		559E2910C24539767CB4053F /* MarkdownMessageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D8E498DA744C862C6A1CC06 /* MarkdownMessageTests.swift */; };
+		5B42B1CA59A07B0808BEFC6F /* CoveTerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BD20E791306D1C65E24A2F1 /* CoveTerminalView.swift */; };
+		7314D6BFAAA8775D18620526 /* HealthSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7166656FC7FE5E0BD7BE0471 /* HealthSync.swift */; };
+		787FCFDF4A9AF056924BF0C0 /* CoveUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 038823A30872D5B6FB24A7DB /* CoveUITests.swift */; };
+		84E3BDADFAC58E2CC1862195 /* Views.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77B45E77F026A13693D98F18 /* Views.swift */; };
+		9044FA29F9A6F9A1F6CE6D65 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = AA4308B4590A9191BF3B02A6 /* MarkdownUI */; };
+		90C203EF30856842AD2D1B09 /* CoveStickers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 219B9474F14F46ADEF6805F6 /* CoveStickers.swift */; };
+		A548A9071B20A871DE791C4B /* CoveWallpaperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C37097332620060F454B459 /* CoveWallpaperTests.swift */; };
+		B6893E420B140E9669AC5F2D /* AttachmentOutboxTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D1D46792ED31A46496D30BC /* AttachmentOutboxTests.swift */; };
+		BBFFDE26844936D2C49E4ECE /* CoveAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A51E7EFD04774436A205E87 /* CoveAppearance.swift */; };
+		D949C6D5520EDE5F16F8E476 /* CoveTerminalTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB8975344B4D06E6719ED17E /* CoveTerminalTests.swift */; };
+		DE949114ADEDBD2AF96BF19B /* CoveStickerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 399F32CC6B92B4DA4BEAB58C /* CoveStickerTests.swift */; };
+		DF70A62FE88DC328DF28C3A1 /* CoveMarkdownUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A549FD1E5483F40B471FF65 /* CoveMarkdownUITests.swift */; };
+		E987E500C76D386FC67962E9 /* CoveChatPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 451C4A8050C46A5CEC6B6B23 /* CoveChatPresentationTests.swift */; };
+		E9E1477F1A9060DD1D159F01 /* Highlighter in Frameworks */ = {isa = PBXBuildFile; productRef = 053FFDFFEB33EFE5C823B52A /* Highlighter */; };
+		EAD25B743BC56E156160E221 /* MarkdownMessageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2356289E7FF1572B4142ADAA /* MarkdownMessageView.swift */; };
+		EB81D478D2A83D05A21333D6 /* MarkdownHighlightTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 962887AD66566FE80B28A26D /* MarkdownHighlightTests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		30C5C18BF88BBC514FB29E92 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 374220EC1ED0A1AF9A44F953 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9B7EC35195B56723DAC648C4;
+			remoteInfo = Cove;
+		};
+		7CE2E9836FD239A22A76FB9E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 374220EC1ED0A1AF9A44F953 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9B7EC35195B56723DAC648C4;
+			remoteInfo = Cove;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		0377806BA3AE12A18C3608C6 /* Cove-Local.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Cove-Local.entitlements"; sourceTree = "<group>"; };
+		038823A30872D5B6FB24A7DB /* CoveUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveUITests.swift; sourceTree = "<group>"; };
+		07534B8783E64DFED1471860 /* RichPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichPreview.swift; sourceTree = "<group>"; };
+		1C37097332620060F454B459 /* CoveWallpaperTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveWallpaperTests.swift; sourceTree = "<group>"; };
+		219B9474F14F46ADEF6805F6 /* CoveStickers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveStickers.swift; sourceTree = "<group>"; };
+		2356289E7FF1572B4142ADAA /* MarkdownMessageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownMessageView.swift; sourceTree = "<group>"; };
+		399F32CC6B92B4DA4BEAB58C /* CoveStickerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveStickerTests.swift; sourceTree = "<group>"; };
+		39CB4EC56D665A6B6122B8D7 /* CoveStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveStore.swift; sourceTree = "<group>"; };
+		3D1D46792ED31A46496D30BC /* AttachmentOutboxTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttachmentOutboxTests.swift; sourceTree = "<group>"; };
+		3D8E498DA744C862C6A1CC06 /* MarkdownMessageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownMessageTests.swift; sourceTree = "<group>"; };
+		3F5F2C5F063975ECDB146644 /* CoveFileUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveFileUITests.swift; sourceTree = "<group>"; };
+		451C4A8050C46A5CEC6B6B23 /* CoveChatPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveChatPresentationTests.swift; sourceTree = "<group>"; };
+		49EC43FE9F8BDF7B942CD7A3 /* CoveUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CoveUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4BBBFA2178F6FDB897BA8F0E /* CoveApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveApp.swift; sourceTree = "<group>"; };
+		5A51E7EFD04774436A205E87 /* CoveAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveAppearance.swift; sourceTree = "<group>"; };
+		6A549FD1E5483F40B471FF65 /* CoveMarkdownUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveMarkdownUITests.swift; sourceTree = "<group>"; };
+		6BD20E791306D1C65E24A2F1 /* CoveTerminalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveTerminalView.swift; sourceTree = "<group>"; };
+		7166656FC7FE5E0BD7BE0471 /* HealthSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthSync.swift; sourceTree = "<group>"; };
+		77B45E77F026A13693D98F18 /* Views.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views.swift; sourceTree = "<group>"; };
+		8377BC3E85AEE179A4DE80A6 /* AttachmentViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttachmentViews.swift; sourceTree = "<group>"; };
+		8A71683D24D97740DC075080 /* CoveUsagePresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveUsagePresentation.swift; sourceTree = "<group>"; };
+		962887AD66566FE80B28A26D /* MarkdownHighlightTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownHighlightTests.swift; sourceTree = "<group>"; };
+		98E22FD35968DAEC8AC5309D /* CoveUsagePresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveUsagePresentationTests.swift; sourceTree = "<group>"; };
+		A062ED976C491920D7872962 /* CoveCompactTabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveCompactTabBar.swift; sourceTree = "<group>"; };
+		A8027850263DDDBF05074C48 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		B438F94C337151ED63B9444A /* Cove.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Cove.entitlements; sourceTree = "<group>"; };
+		B9F45C9CBBF04C7806DB3D30 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		C37CCE1493DEAD4DBE93CFC6 /* THIRD_PARTY_NOTICES.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = THIRD_PARTY_NOTICES.md; sourceTree = "<group>"; };
+		CF43ECF8BE141F4A657CA694 /* TerminalContextTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalContextTests.swift; sourceTree = "<group>"; };
+		CFD6A3A03FACD9F12AE0E8A6 /* MessageDisplayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageDisplayTests.swift; sourceTree = "<group>"; };
+		CFFA911221DFC42FA737EA9E /* AttachmentImageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttachmentImageTests.swift; sourceTree = "<group>"; };
+		D2A4CC64432E931CF27015FC /* CoveTerminalModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveTerminalModel.swift; sourceTree = "<group>"; };
+		D95A2B19D3A5FB9101B8014B /* CoveWallpaper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveWallpaper.swift; sourceTree = "<group>"; };
+		DB1B4AC59DA3969214383F5A /* CoveChatStyleUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveChatStyleUITests.swift; sourceTree = "<group>"; };
+		E23D679B28152A16C36E1ECC /* CoveTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CoveTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		E97C600BF67A95C4A3686BC7 /* Cove.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Cove.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		EB8975344B4D06E6719ED17E /* CoveTerminalTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveTerminalTests.swift; sourceTree = "<group>"; };
+		EFA252EA52A6537C594965F4 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		3F1B92F3942D814F01BF9C55 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9044FA29F9A6F9A1F6CE6D65 /* MarkdownUI in Frameworks */,
+				E9E1477F1A9060DD1D159F01 /* Highlighter in Frameworks */,
+				3060238F16062180AD630B97 /* cmark-gfm in Frameworks */,
+				42EEF6F94BF7A0AA811067CA /* cmark-gfm-extensions in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		1C4E09CED084D2DE7AC5FC39 /* CoveUITests */ = {
+			isa = PBXGroup;
+			children = (
+				DB1B4AC59DA3969214383F5A /* CoveChatStyleUITests.swift */,
+				3F5F2C5F063975ECDB146644 /* CoveFileUITests.swift */,
+				6A549FD1E5483F40B471FF65 /* CoveMarkdownUITests.swift */,
+				038823A30872D5B6FB24A7DB /* CoveUITests.swift */,
+			);
+			path = CoveUITests;
+			sourceTree = "<group>";
+		};
+		94AF4A41555D38E99AE04375 /* Cove */ = {
+			isa = PBXGroup;
+			children = (
+				B9F45C9CBBF04C7806DB3D30 /* Assets.xcassets */,
+				8377BC3E85AEE179A4DE80A6 /* AttachmentViews.swift */,
+				0377806BA3AE12A18C3608C6 /* Cove-Local.entitlements */,
+				B438F94C337151ED63B9444A /* Cove.entitlements */,
+				4BBBFA2178F6FDB897BA8F0E /* CoveApp.swift */,
+				5A51E7EFD04774436A205E87 /* CoveAppearance.swift */,
+				A062ED976C491920D7872962 /* CoveCompactTabBar.swift */,
+				219B9474F14F46ADEF6805F6 /* CoveStickers.swift */,
+				39CB4EC56D665A6B6122B8D7 /* CoveStore.swift */,
+				D2A4CC64432E931CF27015FC /* CoveTerminalModel.swift */,
+				6BD20E791306D1C65E24A2F1 /* CoveTerminalView.swift */,
+				8A71683D24D97740DC075080 /* CoveUsagePresentation.swift */,
+				D95A2B19D3A5FB9101B8014B /* CoveWallpaper.swift */,
+				7166656FC7FE5E0BD7BE0471 /* HealthSync.swift */,
+				A8027850263DDDBF05074C48 /* Info.plist */,
+				2356289E7FF1572B4142ADAA /* MarkdownMessageView.swift */,
+				EFA252EA52A6537C594965F4 /* Models.swift */,
+				07534B8783E64DFED1471860 /* RichPreview.swift */,
+				77B45E77F026A13693D98F18 /* Views.swift */,
+			);
+			path = Cove;
+			sourceTree = "<group>";
+		};
+		A5625A0453FA8B7A898B85EA /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				E97C600BF67A95C4A3686BC7 /* Cove.app */,
+				E23D679B28152A16C36E1ECC /* CoveTests.xctest */,
+				49EC43FE9F8BDF7B942CD7A3 /* CoveUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		C9FEA9CC9BB1A551032527B2 = {
+			isa = PBXGroup;
+			children = (
+				94AF4A41555D38E99AE04375 /* Cove */,
+				ED90BD7ECFEAA86FF89E3B34 /* CoveTests */,
+				1C4E09CED084D2DE7AC5FC39 /* CoveUITests */,
+				EFFBF85D4B5676A4E3029CDC /* docs */,
+				A5625A0453FA8B7A898B85EA /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		ED90BD7ECFEAA86FF89E3B34 /* CoveTests */ = {
+			isa = PBXGroup;
+			children = (
+				CFFA911221DFC42FA737EA9E /* AttachmentImageTests.swift */,
+				3D1D46792ED31A46496D30BC /* AttachmentOutboxTests.swift */,
+				451C4A8050C46A5CEC6B6B23 /* CoveChatPresentationTests.swift */,
+				399F32CC6B92B4DA4BEAB58C /* CoveStickerTests.swift */,
+				EB8975344B4D06E6719ED17E /* CoveTerminalTests.swift */,
+				98E22FD35968DAEC8AC5309D /* CoveUsagePresentationTests.swift */,
+				1C37097332620060F454B459 /* CoveWallpaperTests.swift */,
+				962887AD66566FE80B28A26D /* MarkdownHighlightTests.swift */,
+				3D8E498DA744C862C6A1CC06 /* MarkdownMessageTests.swift */,
+				CFD6A3A03FACD9F12AE0E8A6 /* MessageDisplayTests.swift */,
+				CF43ECF8BE141F4A657CA694 /* TerminalContextTests.swift */,
+			);
+			path = CoveTests;
+			sourceTree = "<group>";
+		};
+		EFFBF85D4B5676A4E3029CDC /* docs */ = {
+			isa = PBXGroup;
+			children = (
+				C37CCE1493DEAD4DBE93CFC6 /* THIRD_PARTY_NOTICES.md */,
+			);
+			name = docs;
+			path = ../docs;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		5E28A33C29355BB1B52FA420 /* CoveTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CEE57CB6CA90B0259B2164A2 /* Build configuration list for PBXNativeTarget "CoveTests" */;
+			buildPhases = (
+				5336E337517FA0886966269C /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				8A5649494C845582D64AE563 /* PBXTargetDependency */,
+			);
+			name = CoveTests;
+			packageProductDependencies = (
+			);
+			productName = CoveTests;
+			productReference = E23D679B28152A16C36E1ECC /* CoveTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		9B7EC35195B56723DAC648C4 /* Cove */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A0FB068C382564F68C29FE6E /* Build configuration list for PBXNativeTarget "Cove" */;
+			buildPhases = (
+				811E29757053D8867EA4BDF3 /* Sources */,
+				0A8875695E53106B23FADB90 /* Resources */,
+				3F1B92F3942D814F01BF9C55 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Cove;
+			packageProductDependencies = (
+				AA4308B4590A9191BF3B02A6 /* MarkdownUI */,
+				053FFDFFEB33EFE5C823B52A /* Highlighter */,
+				7E5EFD2583E0FDBA9297A78C /* cmark-gfm */,
+				CE832F47D22CA2DC59C9969C /* cmark-gfm-extensions */,
+			);
+			productName = Cove;
+			productReference = E97C600BF67A95C4A3686BC7 /* Cove.app */;
+			productType = "com.apple.product-type.application";
+		};
+		E63B75CE6A10F95953F1197C /* CoveUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 654C3BD1804CC172B39D0605 /* Build configuration list for PBXNativeTarget "CoveUITests" */;
+			buildPhases = (
+				CCF3A334E1E9C25CE9AE3D0C /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				465B88736205CD26BD03420E /* PBXTargetDependency */,
+			);
+			name = CoveUITests;
+			packageProductDependencies = (
+			);
+			productName = CoveUITests;
+			productReference = 49EC43FE9F8BDF7B942CD7A3 /* CoveUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		374220EC1ED0A1AF9A44F953 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					5E28A33C29355BB1B52FA420 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					9B7EC35195B56723DAC648C4 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					E63B75CE6A10F95953F1197C = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+						TestTargetID = 9B7EC35195B56723DAC648C4;
+					};
+				};
+			};
+			buildConfigurationList = 3A3953347899D64B5D34D2A8 /* Build configuration list for PBXProject "Cove" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = C9FEA9CC9BB1A551032527B2;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				4E6C6DEAB2776F7E9E599572 /* XCRemoteSwiftPackageReference "HighlighterSwift" */,
+				23A61924625B27EB21E26AFD /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
+				366AC11DE5E10D35B4677A21 /* XCRemoteSwiftPackageReference "swift-cmark" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = A5625A0453FA8B7A898B85EA /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				9B7EC35195B56723DAC648C4 /* Cove */,
+				5E28A33C29355BB1B52FA420 /* CoveTests */,
+				E63B75CE6A10F95953F1197C /* CoveUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		0A8875695E53106B23FADB90 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3C82102340066EE2022B3656 /* Assets.xcassets in Resources */,
+				37E94486791F55E50B12F576 /* THIRD_PARTY_NOTICES.md in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		5336E337517FA0886966269C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0538F7B7467C06B4EBEC8BA8 /* AttachmentImageTests.swift in Sources */,
+				B6893E420B140E9669AC5F2D /* AttachmentOutboxTests.swift in Sources */,
+				E987E500C76D386FC67962E9 /* CoveChatPresentationTests.swift in Sources */,
+				DE949114ADEDBD2AF96BF19B /* CoveStickerTests.swift in Sources */,
+				D949C6D5520EDE5F16F8E476 /* CoveTerminalTests.swift in Sources */,
+				103A22D496719380693F667B /* CoveUsagePresentationTests.swift in Sources */,
+				A548A9071B20A871DE791C4B /* CoveWallpaperTests.swift in Sources */,
+				EB81D478D2A83D05A21333D6 /* MarkdownHighlightTests.swift in Sources */,
+				559E2910C24539767CB4053F /* MarkdownMessageTests.swift in Sources */,
+				4B5E447E4605CA0D0F1C248D /* MessageDisplayTests.swift in Sources */,
+				49636A189E07BA48DFEF9177 /* TerminalContextTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		811E29757053D8867EA4BDF3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3FCB4859617134F538BBE384 /* AttachmentViews.swift in Sources */,
+				138DB806F04BD8DB6337D47A /* CoveApp.swift in Sources */,
+				BBFFDE26844936D2C49E4ECE /* CoveAppearance.swift in Sources */,
+				119C6D1F2BBCAD86DA1193DC /* CoveCompactTabBar.swift in Sources */,
+				90C203EF30856842AD2D1B09 /* CoveStickers.swift in Sources */,
+				2B245E7FF6578AEC61F555CB /* CoveStore.swift in Sources */,
+				43BD2CB7D33B85D0487B95D9 /* CoveTerminalModel.swift in Sources */,
+				5B42B1CA59A07B0808BEFC6F /* CoveTerminalView.swift in Sources */,
+				1F0E2792551EFBF438D73C53 /* CoveUsagePresentation.swift in Sources */,
+				2418886D604D3962A0BB58F6 /* CoveWallpaper.swift in Sources */,
+				7314D6BFAAA8775D18620526 /* HealthSync.swift in Sources */,
+				EAD25B743BC56E156160E221 /* MarkdownMessageView.swift in Sources */,
+				1E37E9234FCCF128CC172C8F /* Models.swift in Sources */,
+				0EAB37E2DCD37005D80352D1 /* RichPreview.swift in Sources */,
+				84E3BDADFAC58E2CC1862195 /* Views.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CCF3A334E1E9C25CE9AE3D0C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				333EFE6F68EC64C3C5BD59A5 /* CoveChatStyleUITests.swift in Sources */,
+				0217A9E1B27B1476A6C64B06 /* CoveFileUITests.swift in Sources */,
+				DF70A62FE88DC328DF28C3A1 /* CoveMarkdownUITests.swift in Sources */,
+				787FCFDF4A9AF056924BF0C0 /* CoveUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		465B88736205CD26BD03420E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9B7EC35195B56723DAC648C4 /* Cove */;
+			targetProxy = 30C5C18BF88BBC514FB29E92 /* PBXContainerItemProxy */;
+		};
+		8A5649494C845582D64AE563 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9B7EC35195B56723DAC648C4 /* Cove */;
+			targetProxy = 7CE2E9836FD239A22A76FB9E /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		18B1EDAB1014C3F3E22D2C32 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.cove.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Cove.app/Cove";
+			};
+			name = Release;
+		};
+		2478B41D58ADE45C8C6FC52E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.cove.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Cove;
+			};
+			name = Release;
+		};
+		3EAE4D1625DA9ED775D4D077 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "Cove/Cove-Local.entitlements";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = Cove/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.cove;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		4DED28F473D580F78E094351 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.cove.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Cove.app/Cove";
+			};
+			name = Debug;
+		};
+		84DBDB43CDE90DA83DDC90D2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Cove/Cove.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = Cove/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.cove;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		8A445A0A10F96BB5D55825D1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.cove.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Cove;
+			};
+			name = Debug;
+		};
+		8DE9E6C2D8DDD40F07DB8900 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 13;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		8E84806BFFFDD59CC848B7AC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 13;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		3A3953347899D64B5D34D2A8 /* Build configuration list for PBXProject "Cove" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8DE9E6C2D8DDD40F07DB8900 /* Debug */,
+				8E84806BFFFDD59CC848B7AC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		654C3BD1804CC172B39D0605 /* Build configuration list for PBXNativeTarget "CoveUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8A445A0A10F96BB5D55825D1 /* Debug */,
+				2478B41D58ADE45C8C6FC52E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		A0FB068C382564F68C29FE6E /* Build configuration list for PBXNativeTarget "Cove" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3EAE4D1625DA9ED775D4D077 /* Debug */,
+				84DBDB43CDE90DA83DDC90D2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		CEE57CB6CA90B0259B2164A2 /* Build configuration list for PBXNativeTarget "CoveTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4DED28F473D580F78E094351 /* Debug */,
+				18B1EDAB1014C3F3E22D2C32 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		23A61924625B27EB21E26AFD /* XCRemoteSwiftPackageReference "swift-markdown-ui" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/gonzalezreal/swift-markdown-ui.git";
+			requirement = {
+				kind = exactVersion;
+				version = 2.4.1;
+			};
+		};
+		366AC11DE5E10D35B4677A21 /* XCRemoteSwiftPackageReference "swift-cmark" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/swiftlang/swift-cmark.git";
+			requirement = {
+				kind = exactVersion;
+				version = 0.5.0;
+			};
+		};
+		4E6C6DEAB2776F7E9E599572 /* XCRemoteSwiftPackageReference "HighlighterSwift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/smittytone/HighlighterSwift.git";
+			requirement = {
+				kind = exactVersion;
+				version = 3.1.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		053FFDFFEB33EFE5C823B52A /* Highlighter */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4E6C6DEAB2776F7E9E599572 /* XCRemoteSwiftPackageReference "HighlighterSwift" */;
+			productName = Highlighter;
+		};
+		7E5EFD2583E0FDBA9297A78C /* cmark-gfm */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 366AC11DE5E10D35B4677A21 /* XCRemoteSwiftPackageReference "swift-cmark" */;
+			productName = "cmark-gfm";
+		};
+		AA4308B4590A9191BF3B02A6 /* MarkdownUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 23A61924625B27EB21E26AFD /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
+			productName = MarkdownUI;
+		};
+		CE832F47D22CA2DC59C9969C /* cmark-gfm-extensions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 366AC11DE5E10D35B4677A21 /* XCRemoteSwiftPackageReference "swift-cmark" */;
+			productName = "cmark-gfm-extensions";
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 374220EC1ED0A1AF9A44F953 /* Project object */;
+}

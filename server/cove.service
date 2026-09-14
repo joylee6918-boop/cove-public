@@ -1,0 +1,22 @@
+[Unit]
+Description=Cove private chat backend
+After=network.target
+
+[Service]
+Type=simple
+User=cove
+Group=cove
+WorkingDirectory=/opt/cove/server
+EnvironmentFile=/etc/cove/cove.env
+ExecStart=/usr/bin/python3 /opt/cove/server/cove.py
+Restart=on-failure
+RestartSec=3
+UMask=0077
+StateDirectory=cove
+StateDirectoryMode=0700
+NoNewPrivileges=true
+# Login Codex as this same Unix account before starting; no login from phone.
+# COVE_CODEX_COMMAND must resolve to that account's installed Codex executable.
+
+[Install]
+WantedBy=multi-user.target

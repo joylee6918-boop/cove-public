@@ -1,0 +1,3 @@
+# Optional: core server uses Python stdlib only.
+httpx[http2]>=0.28,<1
+PyJWT[crypto]>=2.10,<3
