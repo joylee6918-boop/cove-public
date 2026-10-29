@@ -16,7 +16,9 @@ struct CoveCompactTabBar: View {
             ForEach(items.indices, id: \.self) { index in
                 let item = items[index]
                 let selected = selection == index
-                Button { selection = index } label: {
+                Button {
+                    selection = index
+                } label: {
                     VStack(spacing: 2) {
                         Image(systemName: item.1)
                             .font(.system(size: 20, weight: .regular))

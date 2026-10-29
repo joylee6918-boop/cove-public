@@ -1,89 +1,86 @@
-# Cove private server
+# Cove self-hosted backend
 
-Runnable Python 3.9+ backend, independent of other services. Core dependencies are Python's standard library and an installed Codex CLI. Nothing here installs a service, starts a heartbeat, logs in to an account, deploys, or sends unsolicited model turns. Phone API is [the shared contract](../docs/CONTRACT.md).
+2026-10-29 public snapshot · **Python 3.12+** · one owner per instance.
 
-## Start locally
+Core chat uses Python's standard library, SQLite and a separately installed/authenticated Codex CLI. Optional integrations are not bundled services. Read [Developer-only boundaries](../docs/DEVELOPER_FEATURES.md) before enabling them.
 
-1. Prepare a dedicated identity workspace containing your assistant's identity, memory/bootstrap instructions and intended host-local tool configuration. `COVE_WORKSPACE` is required; the app project is not an identity workspace. Codex reads its normal host-local configuration and login as the Unix user running this service. Authenticate on that host/account beforehand; no account credentials are sent to the phone or accepted over this API.
-2. Copy `.env.example` to a private file outside source, replace the independent token with at least 24 random characters, and set absolute workspace/data/Pulse paths. The example is a template, not usable production configuration. Never commit that file or an APNs key.
-3. Export those settings into the process environment and run:
+## Start
 
-```sh
-python3 /path/to/cove/server/cove.py
-```
-
-Default listener is `127.0.0.1:8796`. Use a separately configured HTTPS reverse proxy or private encrypted tunnel for iPhone access. Keep the backend on loopback; set reverse-proxy body limits to at least 29 MiB and connection limits. `GET /health` is process readiness only. Authenticated `GET /v1/usage` contacts app-server and reports real quota or a visible unavailable error; it does not run a model. A successful readiness response does not establish model connectivity.
-
-`cove.service` is a reviewable Linux systemd template: adjust installation paths/user, install Codex for that same user, make the identity/Pulse paths readable, and create a mode-0600 `/etc/cove/cove.env`. Its default account is independent `cove`, so an existing root/user login will not automatically be used. Service installation/deployment is deliberately left to integration.
-
-## Durable conversation behavior
-
-SQLite uses WAL, `synchronous=FULL`, foreign keys, private directory mode 0700 and database/lock files mode 0600. One process owns each data directory through an OS file lock. Back up the data directory consistently with SQLite backup tooling; don't copy only a live main database while its WAL is changing.
-
-A user-message ID is persisted with its canonical body before HTTP acknowledgment. Matching retries return the same record without dispatching another model turn; mismatching body or conversation returns 409. Message received (`sent`) is distinct from the assistant turn succeeding. Pending runtime work lives in SQLite rather than an in-memory queue. A single worker executes turns sequentially, including across conversations; the current throughput ceiling is one active turn, and no concurrency scheduler is needed for this personal first version.
-
-Each Cove conversation creates its own persisted Codex thread. On reconnect only its recorded thread is resumed; the adapter never calls thread/list/latest, takes an active other applications thread, or silently substitutes a fresh thread if resume fails. Stream notifications are keyed by explicit thread and turn IDs. Multiple agent items revise one assistant record; final-answer items replace commentary in the completed bubble. Completed text and status are committed before optional push.
-
-Poll `GET /v1/messages?conversationID=ID&after=CURSOR` until no more messages arrive; pages have up to 200 latest changed records. Keep a separate cursor for each conversation. Cursor advances only to returned rows from that conversation, even though database revisions are global. Revisions include text/status changes; an empty page returns the requested cursor. Order messages by creation time in the client, because update ordering is synchronization ordering.
-
-On process restart, previously dispatched/claimed turns are visibly failed with their partial reply retained. Their execution may have reached Codex; they are **never replayed automatically**. A repeated POST with the old ID still returns the original acknowledgment and does not invoke the model. A user who intentionally wants a new attempt sends a new message ID after checking the failed response. Queued turns that were never claimed may run after restart. A runtime dispatch/stream exception also terminates and cleans up only this adapter’s own app-server subprocess, clearing loaded-thread subscriptions. The next explicit queued user message starts a new transport and resumes its existing mapped thread; the uncertain prior message is never replayed or left running to absorb the new message. Interruption cancels pending work only for the requested conversation and requests `turn/interrupt` for its active turn; final status comes from app-server rather than claiming cancellation before it finishes.
-
-The adapter defaults to Codex read-only sandbox plus on-request approval policy. It uses configured workspace identity and existing read-only tools. The current-conversation console exposes actual command/file/permission approval requests for explicit single-operation accept/decline, bound to the active thread and turn; no session-wide approval or policy amendment is offered. Unsupported server requests remain denied or return an error. Set `COVE_SANDBOX=workspace-write` only when that host workspace policy is intentionally authorized. No host shell/config/login management API is exposed to the phone.
-
-## Pulse, health and subscription data
-
-Pulse reads `COVE_PULSE_PATH` on demand and never writes it. Existing shape is supported: `updated_at` epoch seconds, scalar `physical`, `{value,label,at}` desire/sense entries and `last_signal.label`. Display date is its recorded update time, not the HTTP request time; no timestamp is manufactured when the file is missing/invalid. `heartbeat` is not executed or revived. Canonical contract snapshots are also readable.
-
-Health upload validates the seven supported aggregate metrics and preserves actual capture/sample dates. New upload sets `syncedAt` and resets `readAt`. HTTP reads/display never change `readAt`. The Codex dynamic tool `cove_health_read` is registered when a new Cove thread starts, persists in Codex thread metadata, and is restored on resume. Only a query from the current Cove thread/turn whose result was successfully written and flushed to the app-server pipe timestamps available shared data. This records tool-result handoff, not proof the model understood it. Failed writes leave `readAt` unchanged. An internal per-upload UUID prevents an older response from marking a newer upload as read, even if their contents and sync timestamps are identical. Tool output includes capture/sample/sync times plus explicit missing metric IDs. A null snapshot does not become "read". New unread data only adds a brief availability hint to the next user-initiated turn; it never wakes the model independently.
-
-DELETE health removes the uploaded snapshot from the Cove application store only. SQLite secure deletion is enabled, but this is not a forensic erasure promise for historical WAL/backups. Data already returned to a model can remain in its Codex conversation rollout/context; deletion does not rewrite prior messages or Codex logs. No Apple Health data is written or deleted. First version stores the latest aggregate snapshot and the latest uploaded aggregate for each actual UTC capture day; it does not store raw HealthKit records. Authenticated `GET /v1/health/history?days=7` returns `{snapshots:[HealthSnapshot],updatedAt:Date|null}` in capture-day order, with `days` bounded to 1–31. Missing days remain missing; sample dates inside each snapshot are preserved. UI/history reads do not mark model `readAt`, and DELETE health clears both latest and archived uploaded copies. The model tool currently reads only the latest snapshot. Model query is a data read, not proof a response was shown to 用户, and it does not automatically update external memory.
-
-Subscription windows use official `account/rateLimits/read` and preserve actual `usedPercent`/Unix reset timestamps. Multi-bucket `rateLimitsByLimitId` and the older single bucket are supported. `account/read` supplies plan when quota lacks it. Failure returns no windows and an explicit error; no fake or locally estimated subscription quota is used.
-
-## Attachments and optional APNs
-
-Authenticated file upload/download is backed by the same private database. Any file type is transferable up to 20 MiB, including PDF, Office, zip, HTML, Markdown, JSON, source and arbitrary binary bytes; empty files are valid. Upload returns `{id,filename,mime,size,url}`. Message `attachmentIDs` supports up to 10 distinct files in order, while legacy `attachmentID`/`attachmentURL` remain compatible. Durable dedupe normalizes old persisted one-file fingerprints and equivalent new arrays. Reply/user messages carry `attachments` metadata and preserve it through streaming/finalization. Save returned file IDs before retrying a message; upload is not separately deduplicated.
-
-Download is authenticated and always sets Content-Disposition attachment with a UTF-8 filename, nosniff and no-store. HTML/SVG/scripts are never executed or rendered on the server; MIME and filenames cannot inject response headers. The public JSON body limit is 29 MiB for one Base64 upload; update a reverse proxy's old 12 MiB limit before deploying this extension.
-
-Signature-validated JPEG/PNG/WebP/GIF enters model vision, with 20 MiB total image input per turn. UTF-8 text/HTML/Markdown/JSON/XML/common source enters context up to 100,000 bytes/file and 200,000 bytes/turn. Files are loaded one at a time; a larger valid file is still downloadable, and its context prefix is clearly labeled truncated. Unsupported images, invalid UTF-8, budget overflow and PDF/Office/zip/binary files carry an explicit transfer-only notice, without claiming content was read. Backend does not extract or execute binary documents. Full Markdown rendering is the client's responsibility; backend preserves original text.
-
-The single file-tool implementation is thread-scoped stdio MCP `cove_files`, registered by configuration overrides on both thread/start and thread/resume. CLI-generated schema lacks dynamicTools on resume, so old thread IDs/history are retained and host config/rollout files are not rewritten. Existing health dynamic tool is unchanged. MCP talks only to an adapter-owned 127.0.0.1 callback protected with a random per-conversation capability. It receives no phone COVE_TOKEN or APNs environment. A call additionally matches the actual current active thread/turn MCP item-start event and exact arguments, and database checks that job/turn is still running. Repeated event IDs return the same file. New bytes, assistant attachment metadata and tool result identity commit atomically before success.
-
-Use `cove_create_file(filename,mime,text OR dataBase64)` to deliver generated HTML, Markdown, JSON, code or exact binary bytes directly into the current reply; max 20 MiB/file and 10 reply files. To attach an existing ordinary file, optionally configure colon-separated dedicated absolute COVE_EXPORT_ROOTS and use `cove_send_file(path,filename?,mime?)`. Empty roots disable all path export. Broad system/home roots, hidden files, outside paths/symlinks, hardlinks and special files are refused. Traversal uses pinned directory file descriptors with no-follow opens. Never configure an identity directory or arbitrary home directory as an export root. Neither tool widens the model sandbox or runs file content. File tool failure stays explicit; no delivery is claimed from an unregistered artifact.
-
-`POST /v1/devices` persists an APNs device token; authenticated `DELETE /v1/devices` with JSON `{token:String}` removes it idempotently when notifications are disabled. Registration/removal normalize token case. For actual push install the optional `requirements-apns.txt` in your deployment virtual environment, then configure all four `COVE_APNS_TEAM_ID`, `COVE_APNS_KEY_ID`, `COVE_APNS_KEY_PATH`, and `COVE_APNS_BUNDLE_ID`; set `COVE_APNS_SANDBOX=1` for development signing. Credentials must belong to Cove's signing account/bundle. This is a standard alert, with no reply body in its lock-screen text. It includes `conversationID` and `messageID` for navigation.
-
-Push is best effort after the reply commit, has no retry queue, and automatic invalid-device-token pruning is not implemented. Failure logs only a generic transport error or status, never a token or conversation text. Polling remains the authoritative delivery path. APNs optional packages are imported only when credentials are configured; core chat remains stdlib-only. Actual APNs delivery needs real device signing and remains unverified here.
-
-## Verification and sources
+1. Create a dedicated low-privilege Unix account, workspace and `CODEX_HOME`. Authenticate your own Codex account there. Do not borrow another running assistant's session, login or private identity.
+2. Copy `.env.example` to an untracked private `.env`, generate a unique token (at least 24 random characters), and set absolute data/workspace paths. Create those directories with private permissions. Replace the example value; do not deploy it literally.
+3. Export the environment and start from this directory:
 
 ```sh
-python3 -m unittest discover -s server -p 'test_*.py' -v
+chmod 600 .env
+set -a
+. ./.env
+set +a
+python3 cove.py
 ```
 
-The public snapshot passed 38 backend tests on 2026-09-14 using isolated loopback HTTP, actual SQLite and a deterministic fake stdio runtime. They cover authorization/readiness distinction, committed acknowledgment, persistent dedupe/body conflicts, revision paging/cursor isolation, streaming final replacement, conversation mapping/resume, interruption routing, restart uncertain-turn failure, private file mode, Pulse immutability/timestamp, quota shape/unavailable state, health sync/UI/model-read/delete distinctions, authenticated daily history persistence/bounds/deletion, private reasoning exclusion, attachment authentication, notification registration/removal, offline conversation ID retries, failed tool-result handoff/new-upload races, uncertain accepted-turn subprocess termination and subsequent same-thread resume without replay, and dynamic tool request ordering/stale-turn rejection. Additional file checks exercise actual 20 MiB upload/download and over-limit/body rejection, metadata and binary roundtrip, inert HTML headers/auth, multiple-file/legacy retry identity, bounded text/vision and binary honesty, actual stdio MCP file creation on new and original resumed threads, callback authentication/current-turn isolation, and export rejection for outside/hidden/symlink/hardlink/FIFO paths. Tests never send a real model message or APNs notification.
+The default listener is `127.0.0.1:8796`. Use your own HTTPS reverse proxy for phone access, with at least a 29 MiB request-body allowance for Base64 attachments. Do not expose the bare port or share the owner token. `GET /health` is process readiness, not evidence of model connectivity; authenticated `/v1/usage` reads actual app-server account information without sending a model turn.
 
-Official protocol source: [Codex App Server](https://learn.chatgpt.com/docs/app-server). Implementation was checked against schema generated by locally installed `codex-cli 0.154.0`:
+`cove.service` is an illustrative systemd template, not an installer. Adjust its user, paths and Python interpreter; keep `/etc/cove/cove.env` mode 0600. The service account must own its own Codex login and workspace. Running it as a new user does not inherit another user's login.
+
+## Configuration
+
+| Setting | Meaning |
+|---|---|
+| `COVE_TOKEN` | Private owner credential; one shared trust domain, not per-user accounts |
+| `COVE_WORKSPACE` | Dedicated operator-configured assistant workspace |
+| `CODEX_HOME` | Optional explicit isolated Codex configuration/login directory |
+| `COVE_DATA_DIR` | Persistent private data directory; default `~/.local/share/cove` |
+| `COVE_CODEX_COMMAND` | Default `codex app-server`; must resolve for the service account |
+| `COVE_MODEL`, `COVE_EFFORT` | Account-supported model / effort; empty model uses the host default |
+| `COVE_SANDBOX`, `COVE_APPROVAL_POLICY` | Keep safe defaults `read-only` / `on-request`; review any widening |
+| `COVE_APPROVAL_TIMEOUT`, `COVE_TURN_TIMEOUT` | Pending approval / model turn deadlines |
+| `COVE_EXPORT_ROOTS` | Colon-separated dedicated file-export roots; empty disables path exports |
+| `COVE_RUNTIME` | `app-server` by default; `tmux` is an explicitly selected experimental alternative |
+| `COVE_SHORTCUTS_TOKEN` | Optional separate write-only App-event credential, 32–256 ASCII characters |
+| `COVE_PULSE_PATH` | Optional read-only compatible Pulse snapshot; no service is launched |
+| `COVE_OB_BUCKETS_PATH`, `COVE_MEMORY_DB` | Optional operator-owned external memory data, not included |
+| `COVE_CHAT_DB` | Optional explicit chat evidence DB; otherwise follows this instance's data directory |
+| `COVE_COLLAR_URL`, `COVE_COLLAR_TOKEN` | Optional independent Collar bridge |
+| `COVE_TRAVEL_TOKEN_FILE` | Optional token file for a separately implemented loopback travel service |
+
+Additional Apple, TTS, speech-model and runtime settings live in their source modules. Never store real values in these documents. The public default project uses example bundle IDs and no signing team; APNs must match **your** actual signed app.
+
+Install optional APNs/WeatherKit cryptographic dependencies in your own virtual environment:
 
 ```sh
-codex app-server generate-json-schema --experimental --out /tmp/cove-schema
+python3 -m venv .venv
+. .venv/bin/activate
+python3 -m pip install -r requirements-apns.txt
 ```
 
-Dynamic tools are experimental: this installed schema requires `{type:"function",name,description,inputSchema}` and replies use `{success,contentItems:[{type:"inputText",text}]}`. There is no silent fallback that removes the health tool if another installed Codex version rejects it; that turn fails visibly. Upgrade schema and adapter together.
+## Durability and upgrades
 
-## Conversation execution console
+- SQLite uses WAL, foreign keys, durable commits and a single-owner data-directory lock. Keep runtime directories private. Back up consistently using SQLite backup tooling; copying a live main DB without its WAL is not a safe backup.
+- A user-message ID and canonical body commit before ACK. Matching retries return the same message; conflicting retries return 409. Persist uploaded attachment IDs before retrying a message.
+- Turns are serialized through a durable queue. Each Cove conversation maps to its own recorded thread; the adapter does not select another application's latest thread. Streaming notifications must match explicit thread/turn IDs.
+- Claimed/dispatched work interrupted by a process restart is uncertain and visibly fails rather than blindly replaying. Queued, never-started work may run. A new user retry requires a new message ID after reviewing the failed result.
+- Polling revisions are distinct from creation order. Drain pages per conversation; do not let a late ACK or old poll overwrite a newer cached message revision. A receipt means input reached a real model turn, not that the model understood it.
+- Local continuation preserves chat history while changing a bound runtime thread. Token thresholds in `auto_rollover.py` are model-specific tuning, not universal limits. External OB memory is optional and separately authorized; a queued memory write is not proof of successful storage.
+- Before replacing an older deployment, back up its complete data directory, review schema/protocol changes and test a copy with an isolated fake runtime. No production deployment or migration is performed by this repository.
 
-`GET /v1/terminal?conversationID=...&after=0` provides durable, redacted command/output/file/tool/message events (200 per page), current runtime/queue status, selected next-turn model/effort, and ephemeral pending approvals. This is the original Cove thread and message queue, not a remote tmux or parallel shell. Ordinary `POST /v1/terminal/input {id,conversationID,text}` uses the existing durable chat ACK/dedupe; `/stop`, `/model [model] [effort]`, and `/help` are explicit controls. Control IDs persist; a retry of an old stop cannot cancel a newer turn. A stop receipt commits before its side effect and is not automatically replayed after an uncertain restart.
+## Privacy and permission boundaries
 
-`GET /v1/terminal/models` reads paginated actual `model/list`. `POST /v1/terminal/model {conversationID,model,effort}` checks the advertised catalog/efforts and persists the next-dispatch selection. Both fields are explicitly passed to subsequent `turn/start`, preserving old resumed thread identity. `COVE_EFFORT` defaults to `high`, while `COVE_MODEL` is optional and defaults to the host model when empty. Catalog visibility does not guarantee account/model execution access.
+All owner routes except readiness require the owner bearer token. App-event ingestion additionally accepts its separately scoped token; that token cannot read chats or operate other routes.
 
-`POST /v1/terminal/approval {conversationID,approvalID,threadID,turnID,decision}` sends `accept` or `decline` to the exact active server-initiated RPC. Command acceptance respects advertised available decisions; permission acceptance returns the exact requested profile with `scope:turn`. No terminal API widens the configured sandbox or grants session-wide permissions. Expiry (default `COVE_APPROVAL_TIMEOUT=120`, bounded 1–600 seconds), stop, turn completion, app-server disconnect and service restart clear approvals; stale or duplicate responses return 409. A successful response reports pipe handoff, not command success. Closing the phone UI/poll socket does not interrupt the model; unanswered approvals expire and decline. Elicitation/user-input/credential refresh is not implemented.
+HealthKit itself remains on iOS. Shared snapshots retain actual capture/sample/coverage timestamps. UI reads do not mark data as model-read. Persistent data sharing must be explicitly enabled by the owner and can cover personal-ledger commands; it does not authorize banking or arbitrary device control. Deletion removes the application copy, not Apple Health, historical messages, upstream context or backups.
 
-Execution logs exclude private reasoning and arbitrary tool arguments/results. Known environment secrets, bearer/token-key values and recognizable API/JWT tokens are redacted before SQLite storage. Stdout/stderr is buffered to complete lines for redaction, oversized lines dropped, 64,000 characters per command output and 1,000,000 per live turn; each event text caps at 16,000. These are bounded execution logs, not unlimited tmux scrollback. Arbitrary command-produced confidential prose cannot be recognized automatically; keep private host access within the existing sandbox and review actual requested operations. Historical pre-console chat is preserved, but old execution events are not reconstructed. Full REST/event/approval schemas are in `docs/CONTRACT.md`.
+Model file tools use an adapter-owned loopback callback with a separate scoped capability and checks against the active turn and actual tool event. Empty export roots disable path access. Broad roots, traversal, symlinks, hardlinks and special files are refused; binary attachments remain inert and cannot be described as read merely because upload succeeded.
 
-`test_terminal.py` exercises actual HTTP + SQLite + fake app-server stdio: queue/dedupe/cursor isolation, no reasoning/credentials in logs, exact current-turn approval RPC, accept/decline, expiry/disconnect/stop invalidation, no old-stop replay, real-catalog validation, model/effort on subsequent turns including fresh-adapter original-thread resume, and persisted settings/events. No real model messages or user threads are used by these regressions.
+Default execution is read-only with on-request approvals. The execution-log console, restricted Shell and experimental native tmux console are distinct capabilities. They are not multi-user isolation. Keep the host user unprivileged; never connect an experimental terminal to another active conversation. Arbitrary confidential output cannot be reliably redacted by pattern matching alone.
 
-Latest log opening uses `GET /v1/terminal?conversationID=...&after=0&tail=1`: the latest 200 events, ascending, with their last ID as cursor. Ordinary `after=cursor` requests preserve complete incremental paging. Omitting `tail` retains full history; nonzero after plus tail or malformed tail returns 400. The regression includes more than two pages and interleaved conversation IDs, proving both tail selection and subsequent new-event cursor isolation.
+Push happens after durable reply commit and is best effort; polling is authoritative. Notification-content preview is an explicit user setting, not always enabled. Configuring TTS, proactive wake services, travel images or real model tests may incur costs and transmit content to third parties. This snapshot sends no such traffic as an installation step.
 
-Private-chat receipts/reactions: new `ChatMessage.readAt` defaults null and marks only the user input bound to an actual Codex-started/acknowledged running turn. Queue acceptance/claim, pre-start failures and duplicate failed POSTs remain unread; a known start is retained even if its reply fails. The bind checks running state, configured thread, an unchanged turn and absence of that turn on a different job. Repeated binding never changes the timestamp or advances the cursor again. New `isLiked` defaults false and `POST /v1/messages/reaction {conversationID,messageID,isLiked:true|false}` persistently sets the sole user's like for an existing message; strict boolean/ownership checks, idempotent cancellation and normal poll revisions apply. Neither operation changes dedupe identity, sends another turn or alters credentials. Legacy history receives null/false defaults without fabricated retrospective receipts.
+## Verification
+
+```sh
+python3 -m unittest discover -v
+```
+
+Tests use temporary databases, synthetic fixtures, local HTTP and deterministic fake app-server processes. Native Codex smoke tests require explicit opt-in and a deliberately replaced nonexistent binary placeholder; never run them against a real user's existing session. Optional encryption/ffmpeg/tmux dependencies may affect skips. No test result establishes physical hardware, HealthKit, APNs, realtime or paid provider availability.
+
+Release-specific results and limitations are in [CHANGELOG.md](../CHANGELOG.md). The app-server protocol evolves; validate your installed CLI against the adapter and [official protocol documentation](https://developers.openai.com/codex/app-server/). Do not silently remove rejected tools, widen permissions, switch models or substitute another thread to hide incompatibility.

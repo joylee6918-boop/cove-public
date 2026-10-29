@@ -64,6 +64,12 @@ final class AttachmentOutboxTests: XCTestCase {
         restored = reloaded
         XCTAssertEqual(reloaded.messages.first?.id, pending.id)
         await reloaded.connect()
+        // Reconnection must not wait behind uploads; wait for the independent
+        // idempotent outbox drain rather than treating connect() as a send ACK.
+        let deadline = Date().addingTimeInterval(4)
+        while reloaded.messages.first?.status != "sent", Date() < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
         XCTAssertEqual(reloaded.messages.first?.status, "sent")
         XCTAssertEqual(state.uploadNames, ["first.md", "second.html", "second.html"])
         XCTAssertEqual(state.messagePosts, 1)
@@ -116,11 +122,17 @@ private final class UploadScenario: @unchecked Sendable {
         case ("GET", "/cove/v1/messages"):
             result = ["messages": [], "cursor": 0, "busy": false]
         case ("POST", "/cove/v1/attachments"):
-            let name = body["filename"] as! String
+            let items = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems ?? []
+            let name = items.first(where: { $0.name == "filename" })?.value ?? ""
+            let mime = items.first(where: { $0.name == "mime" })?.value ?? ""
+            guard request.value(forHTTPHeaderField: "Content-Type") == "application/octet-stream",
+                  bytes == Data(name == "first.md" ? "first".utf8 : "<h1>second</h1>".utf8) else {
+                throw URLError(.cannotParseResponse)
+            }
             uploadNames.append(name)
             if uploadNames.count == 2 { throw URLError(.notConnectedToInternet) }
             let id = name == "first.md" ? firstID : secondID
-            result = metadata(id, name, body["mime"] as! String)
+            result = metadata(id, name, mime)
         case ("POST", "/cove/v1/messages"):
             messagePosts += 1
             sentFileIDs = body["attachmentIDs"] as! [String]

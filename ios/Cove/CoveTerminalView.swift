@@ -15,6 +15,13 @@ struct CoveTerminalView: View {
     @FocusState private var inputFocused: Bool
 
     private var activityKey: String { "\(store.activeConversationID)|\(scenePhase == .active)|\(store.previewMode)" }
+    private var isLocalScrollFixture: Bool {
+        #if DEBUG
+        store.previewMode && ProcessInfo.processInfo.arguments.contains("--terminal-scroll-qa")
+        #else
+        false
+        #endif
+    }
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -59,6 +66,9 @@ struct CoveTerminalView: View {
         }
         .task(id: activityKey) {
             guard scenePhase == .active else { return }
+            #if DEBUG
+            if isLocalScrollFixture { terminal.loadLocalScrollFixture(); return }
+            #endif
             await terminal.run(service: CoveStoreTerminalService(store: store), conversationID: store.activeConversationID, preview: store.previewMode)
         }
         .alert("开启新对话，旧记录保留", isPresented: $showClearConfirmation) {
@@ -84,7 +94,19 @@ struct CoveTerminalView: View {
                 Spacer()
                 if terminal.isPolling { Image(systemName: "antenna.radiowaves.left.and.right").font(.caption).foregroundStyle(CoveStyle.secondaryText) }
             }
-            Text("指令交给当前 Cove 会话执行；这里显示服务端日志。").font(.caption).foregroundStyle(CoveStyle.secondaryText)
+            Text("同一个 Codex app-server 会话：实时显示思考状态、计划、工具、命令和输出。").font(.caption).foregroundStyle(CoveStyle.secondaryText)
+            #if DEBUG
+            if isLocalScrollFixture {
+                HStack {
+                    Text("合成日志 · 不联网").font(.caption)
+                    Spacer()
+                    Button("追加") { terminal.appendLocalScrollFixture() }
+                        .frame(minWidth: 44, minHeight: 44).accessibilityIdentifier("terminal.qa.append")
+                    Button("扩展") { terminal.appendLocalScrollFixture(growingLastEvent: true) }
+                        .frame(minWidth: 44, minHeight: 44).accessibilityIdentifier("terminal.qa.grow")
+                }
+            }
+            #endif
             if let model = terminal.model {
                 Text("下一次回复：\(model)\(terminal.effort.map { " · " + $0 } ?? "")")
                     .font(.system(.caption, design: .monospaced)).foregroundStyle(CoveStyle.terminalAccent).lineLimit(2)
@@ -115,15 +137,26 @@ struct CoveTerminalView: View {
                     if let notice = terminal.notice {
                         Text(notice).font(.system(.caption, design: .monospaced)).foregroundStyle(CoveStyle.terminalAccent)
                     }
-                    Color.clear.frame(height: 1).id("terminal-bottom")
+                    if isLocalScrollFixture {
+                        Text("本地日志末尾 \(terminal.events.last?.id ?? 0)").font(.caption)
+                            .accessibilityIdentifier("terminal.qa.tail").id("terminal-bottom")
+                    } else {
+                        Color.clear.frame(height: 1).id("terminal-bottom")
+                    }
                 }.padding(14).frame(maxWidth: .infinity, alignment: .leading)
             }
             .accessibilityIdentifier("terminal.log")
             .scrollDismissesKeyboard(.interactively)
             .defaultScrollAnchor(.bottom, for: .initialOffset)
-            .onScrollPhaseChange { _, phase in
-                if phase == .interacting || phase == .tracking { userScrolling = true }
-                if phase == .idle { userScrolling = false }
+            .defaultScrollAnchor(followsTail ? .bottom : nil, for: .sizeChanges)
+            .onScrollPhaseChange { previous, phase, context in
+                // A tap/selection can track without actually scrolling. Only a
+                // real drag/deceleration opts out of following live output.
+                userScrolling = phase == .interacting || phase == .decelerating
+                if phase == .idle && (previous == .interacting || previous == .decelerating) {
+                    followsTail = context.geometry.contentSize.height - context.geometry.visibleRect.maxY < 80
+                    if followsTail { unseenEvents = 0; scrollToTail(proxy) }
+                }
             }
             .onScrollGeometryChange(for: Bool.self) { geometry in
                 geometry.contentSize.height - geometry.visibleRect.maxY < 80
@@ -131,12 +164,16 @@ struct CoveTerminalView: View {
                 if value { followsTail = true; unseenEvents = 0 }
                 else if userScrolling { followsTail = false }
             }
-            .onScrollGeometryChange(for: CGSize.self) { $0.containerSize } action: { _, _ in
+            .onScrollGeometryChange(for: CGSize.self) { geometry in
+                // React after lazy rows have actually grown/wrapped, not only
+                // before layout when a new event ID arrives.
+                CGSize(width: geometry.visibleRect.height.rounded(), height: geometry.contentSize.height.rounded())
+            } action: { _, _ in
                 if followsTail { scrollToTail(proxy) }
             }
-            .onChange(of: terminal.events.last?.id) { previous, _ in
+            .onChange(of: terminal.events) { previous, _ in
                 if followsTail { scrollToTail(proxy) }
-                else { unseenEvents += terminal.events.filter { $0.id > (previous ?? 0) }.count }
+                else { unseenEvents += terminal.events.filter { $0.id > (previous.last?.id ?? 0) }.count }
             }
             .onChange(of: terminal.notice) {
                 if followsTail { scrollToTail(proxy) }
@@ -145,7 +182,7 @@ struct CoveTerminalView: View {
                 if followsTail { scrollToTail(proxy) }
             }
             .onChange(of: jumpToTail) {
-                followsTail = true; unseenEvents = 0; scrollToTail(proxy)
+                userScrolling = false; followsTail = true; unseenEvents = 0; scrollToTail(proxy)
             }
             .overlay(alignment: .bottomTrailing) {
                 if !followsTail {
@@ -160,11 +197,13 @@ struct CoveTerminalView: View {
     }
 
     private func scrollToTail(_ proxy: ScrollViewProxy) {
-        // Wait for the new rows/keyboard layout before locating the final sentinel.
+        let conversation = store.activeConversationID
         Task { @MainActor in
             await Task.yield()
-            guard followsTail else { return }
-            proxy.scrollTo("terminal-bottom", anchor: .bottom)
+            guard followsTail, !userScrolling, conversation == store.activeConversationID else { return }
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) { proxy.scrollTo("terminal-bottom", anchor: .bottom) }
         }
     }
 
@@ -173,17 +212,31 @@ struct CoveTerminalView: View {
             HStack(spacing: 8) {
                 shortcut("model", label: "切换模型", id: "model") { showModels = true }
                 shortcut("clear", label: "开启新对话，旧记录保留", id: "clear") { showClearConfirmation = true }
-                shortcut("esc", label: "停止当前回复", id: "esc") { escape() }
+                Button { escape() } label: {
+                    HStack(spacing: 5) {
+                        if terminal.isStopping { ProgressView().controlSize(.small) }
+                        Text("Esc · 停止")
+                    }.font(.system(.caption, design: .monospaced).weight(.medium))
+                        .padding(.horizontal, 12).frame(minHeight: 44)
+                        .background(CoveStyle.softAccent, in: Capsule())
+                }.buttonStyle(.plain).accessibilityLabel(terminal.isStopping ? "正在停止当前回复" : "停止当前回复")
+                    .accessibilityIdentifier("terminal.shortcut.esc")
+                    .disabled(store.previewMode || !terminal.isPolling || terminal.isStopping)
                 shortcut("help", label: "查看控制台帮助", id: "help") { Task { await terminal.showHelp() } }
                 Button { jumpToTail += 1 } label: {
                     Image(systemName: "arrow.down.to.line").frame(minWidth: 44, minHeight: 44)
                 }.accessibilityLabel("回到底部").accessibilityIdentifier("terminal.shortcut.bottom")
-                Button { inputFocused = false } label: {
+                Button {
+                    inputFocused = false
+                    // The multiline native field can retain first responder in
+                    // a sheet even after the SwiftUI focus binding clears.
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                } label: {
                     Image(systemName: "keyboard.chevron.compact.down").frame(minWidth: 44, minHeight: 44)
                 }.accessibilityLabel("收起键盘").accessibilityIdentifier("terminal.shortcut.keyboard")
             }.padding(.horizontal, 14).padding(.vertical, 4)
                 .foregroundStyle(CoveStyle.terminalAccent)
-        }
+        }.accessibilityIdentifier("terminal.shortcuts")
     }
 
     private func shortcut(_ title: String, label: String, id: String, action: @escaping () -> Void) -> some View {

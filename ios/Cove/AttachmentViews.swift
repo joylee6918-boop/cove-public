@@ -50,6 +50,35 @@ enum CoveAttachmentFiles {
         }.value
     }
 
+    /// Photo sends use bounded JPEG pixels for vision compatibility. Choosing
+    /// the same image through Files always preserves its original bytes.
+    static func preparePhoto(_ data: Data, ordinal: Int) async throws -> CoveOutgoingFile {
+        try await Task.detached(priority: .userInitiated) {
+            guard data.count <= maximumBytes else { throw CoveAttachmentError.tooLarge }
+            return try autoreleasepool {
+                guard let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary),
+                      let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+                      let width = (properties[kCGImagePropertyPixelWidth] as? NSNumber)?.doubleValue,
+                      let height = (properties[kCGImagePropertyPixelHeight] as? NSNumber)?.doubleValue,
+                      width > 0, height > 0, width <= 32768, height <= 32768,
+                      width * height <= 120_000_000 else { throw CoveAttachmentError.unreadable }
+                let options: [CFString: Any] = [kCGImageSourceCreateThumbnailFromImageAlways: true,
+                    kCGImageSourceCreateThumbnailWithTransform: true, kCGImageSourceThumbnailMaxPixelSize: 2560,
+                    kCGImageSourceShouldCacheImmediately: true]
+                guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
+                    throw CoveAttachmentError.unreadable
+                }
+                let result = NSMutableData()
+                guard let target = CGImageDestinationCreateWithData(result, UTType.jpeg.identifier as CFString, 1, nil) else {
+                    throw CoveAttachmentError.unreadable
+                }
+                CGImageDestinationAddImage(target, image, [kCGImageDestinationLossyCompressionQuality: 0.9] as CFDictionary)
+                guard CGImageDestinationFinalize(target) else { throw CoveAttachmentError.unreadable }
+                return CoveOutgoingFile(data: result as Data, filename: "照片-\(ordinal).jpg", mime: "image/jpeg")
+            }
+        }.value
+    }
+
     static func cache(_ data: Data, filename: String, mime: String) async throws -> URL {
         try await Task.detached(priority: .userInitiated) {
             guard data.count <= maximumBytes else { throw CoveAttachmentError.tooLarge }

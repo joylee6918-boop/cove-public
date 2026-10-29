@@ -122,6 +122,25 @@ final class CoveTerminalTests: XCTestCase {
         XCTAssertFalse(service.inputTexts.contains("Escape"))
     }
 
+    func testStopRemainsAvailableWhileOrdinarySubmitIsStalled() async throws {
+        let service = FakeTerminalService()
+        service.stallOrdinaryInput = true
+        let terminal = CoveTerminalViewModel()
+        let running = try await start(terminal, service: service)
+        defer { running.cancel() }
+        terminal.draft = "slow request"
+
+        let submit = Task { await terminal.submit() }
+        for _ in 0..<20 where !service.inputTexts.contains("slow request") { await Task.yield() }
+        XCTAssertTrue(service.inputTexts.contains("slow request"))
+        await terminal.stopCurrentReply()
+
+        XCTAssertTrue(service.inputTexts.contains("/stop"))
+        XCTAssertEqual(terminal.notice, "已提交停止当前回复的请求。")
+        service.releaseOrdinaryInput()
+        await submit.value
+    }
+
     private func start(_ terminal: CoveTerminalViewModel, service: FakeTerminalService, expectedCursor: Int = 1) async throws -> Task<Void, Never> {
         let loaded = expectation(description: "Initial snapshot requested")
         service.onSnapshot = { loaded.fulfill() }
@@ -148,6 +167,8 @@ private final class FakeTerminalService: CoveTerminalService {
     var lastCursor = 1
     var failNextContext = false
     var failNextInput = false
+    var stallOrdinaryInput = false
+    private var ordinaryContinuation: CheckedContinuation<Void, Never>?
     var onSnapshot: (() -> Void)?
     func snapshot(conversationID: String, after: Int, tail: Bool) async throws -> CoveTerminalSnapshot {
         snapshotRequests += 1
@@ -169,8 +190,16 @@ private final class FakeTerminalService: CoveTerminalService {
         inputIDs.append(id)
         inputConversations.append(conversationID)
         inputTexts.append(text)
+        if stallOrdinaryInput && !text.hasPrefix("/") {
+            await withCheckedContinuation { ordinaryContinuation = $0 }
+        }
         if failNextInput { failNextInput = false; throw URLError(.networkConnectionLost) }
         return CoveTerminalActionResult(ok: true, kind: text == "/stop" ? "stop" : text == "/help" ? "help" : "message", model: nil, effort: nil, text: text == "/help" ? "控制台帮助" : nil)
+    }
+    func releaseOrdinaryInput() {
+        stallOrdinaryInput = false
+        ordinaryContinuation?.resume()
+        ordinaryContinuation = nil
     }
     func setModel(conversationID: String, model: String, effort: String) async throws -> CoveTerminalActionResult {
         CoveTerminalActionResult(ok: true, kind: "model", model: model, effort: effort, text: nil)

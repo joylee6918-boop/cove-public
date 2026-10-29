@@ -186,6 +186,144 @@ struct CoveChatWallpaperView: View {
     }
 }
 
+enum CoveLivingWallpaperScene {
+    case home
+    case pulse
+}
+
+/// A quieter treatment of the selected chat wallpaper for Cove's living spaces.
+/// It shares the same persisted choice/photo/brightness, while adding a static
+/// readability veil instead of an expensive live blur.
+struct CoveLivingWallpaperView: View {
+    @ObservedObject private var wallpaper = CoveWallpaperStore.shared
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    let scene: CoveLivingWallpaperScene
+
+    init(scene: CoveLivingWallpaperScene = .home) {
+        self.scene = scene
+    }
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                CoveWallpaperSurface(
+                    choice: wallpaper.selection,
+                    image: wallpaper.photo,
+                    brightness: wallpaper.brightness
+                )
+                .frame(width: geometry.size.width, height: geometry.size.height)
+
+                if reduceTransparency || contrast == .increased {
+                    accessibleBackdrop
+                } else {
+                    readabilityVeil
+                    pearlLight
+                }
+            }
+            .frame(width: geometry.size.width, height: geometry.size.height)
+        }
+        .ignoresSafeArea()
+        .clipped()
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+        .task { await wallpaper.loadPhotoIfNeeded() }
+    }
+
+    private var readabilityVeil: some View {
+        LinearGradient(
+            colors: veilColors,
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    private var pearlLight: some View {
+        ZStack {
+            RadialGradient(
+                colors: [iceHighlight, .clear],
+                center: scene == .home ? .topTrailing : .topLeading,
+                startRadius: 8,
+                endRadius: 430
+            )
+            RadialGradient(
+                colors: [roseHighlight, .clear],
+                center: scene == .home ? .bottomLeading : .bottomTrailing,
+                startRadius: 10,
+                endRadius: 520
+            )
+        }
+    }
+
+    /// Accessibility modes deliberately trade the photo texture for a fully
+    /// opaque pearl-colored field, so text never depends on transparency.
+    private var accessibleBackdrop: some View {
+        LinearGradient(
+            colors: accessibleColors,
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    private var veilColors: [Color] {
+        switch (scene, scheme) {
+        case (.home, .light):
+            [Color(red: 1.00, green: 0.98, blue: 0.98).opacity(0.12),
+             Color(red: 0.96, green: 0.98, blue: 1.00).opacity(0.16),
+             Color(red: 1.00, green: 0.96, blue: 0.98).opacity(0.14)]
+        case (.pulse, .light):
+            [Color(red: 0.95, green: 0.98, blue: 1.00).opacity(0.10),
+             Color(red: 0.98, green: 0.96, blue: 1.00).opacity(0.12),
+             Color(red: 1.00, green: 0.97, blue: 0.99).opacity(0.14)]
+        case (.home, .dark):
+            [Color(red: 0.12, green: 0.10, blue: 0.14).opacity(0.64),
+             Color(red: 0.12, green: 0.14, blue: 0.18).opacity(0.60),
+             Color(red: 0.17, green: 0.11, blue: 0.15).opacity(0.66)]
+        case (.pulse, .dark):
+            [Color(red: 0.09, green: 0.13, blue: 0.18).opacity(0.62),
+             Color(red: 0.15, green: 0.12, blue: 0.20).opacity(0.64),
+             Color(red: 0.16, green: 0.11, blue: 0.16).opacity(0.66)]
+        default:
+            [CoveStyle.background.opacity(0.14), CoveStyle.background.opacity(0.10)]
+        }
+    }
+
+    private var accessibleColors: [Color] {
+        switch (scene, scheme) {
+        case (.home, .light):
+            [Color(red: 1.00, green: 0.98, blue: 0.99),
+             Color(red: 0.96, green: 0.98, blue: 1.00),
+             Color(red: 1.00, green: 0.96, blue: 0.98)]
+        case (.pulse, .light):
+            [Color(red: 0.95, green: 0.98, blue: 1.00),
+             Color(red: 0.98, green: 0.96, blue: 1.00),
+             Color(red: 1.00, green: 0.97, blue: 0.99)]
+        case (.home, .dark):
+            [Color(red: 0.13, green: 0.10, blue: 0.14),
+             Color(red: 0.11, green: 0.14, blue: 0.18),
+             Color(red: 0.17, green: 0.11, blue: 0.15)]
+        case (.pulse, .dark):
+            [Color(red: 0.09, green: 0.13, blue: 0.18),
+             Color(red: 0.15, green: 0.12, blue: 0.20),
+             Color(red: 0.16, green: 0.11, blue: 0.16)]
+        default:
+            [CoveStyle.background, CoveStyle.card]
+        }
+    }
+
+    private var iceHighlight: Color {
+        Color(red: 0.67, green: 0.84, blue: 1.00)
+            .opacity(scheme == .dark ? 0.06 : 0.05)
+    }
+
+    private var roseHighlight: Color {
+        Color(red: 1.00, green: 0.70, blue: 0.84)
+            .opacity(scheme == .dark ? 0.05 : 0.04)
+    }
+}
+
 private struct CoveWallpaperSurface: View {
     @Environment(\.colorScheme) private var scheme
     let choice: CoveWallpaperChoice
@@ -206,6 +344,9 @@ private struct CoveWallpaperSurface: View {
                             .frame(width: geometry.size.width, height: geometry.size.height).clipped()
                             .brightness(brightness)
                             .overlay(CoveStyle.chatBackground.opacity(0.08))
+                            // Display-only veil: preserve the saved photo and the
+                            // user's brightness setting; previews share this surface.
+                            .overlay(Color.black.opacity(scheme == .dark ? 0.38 : 0))
                     } else { CoveStyle.chatBackground }
                 }
             }.frame(width: geometry.size.width, height: geometry.size.height)

@@ -9,9 +9,17 @@ import cmark_gfm_extensions
 struct MarkdownMessageView: View {
     let text: String
     var id: String? = nil
+    var searchQuery: String = ""
+    var widgetContext: String? = nil
+    var onWidgetSend: ((String, String) throws -> Void)? = nil
 
     @ViewBuilder var body: some View {
-        if MarkdownPlainText.isPlain(text) {
+        if !searchQuery.isEmpty {
+            // Search mode reveals the literal stored body, including code/markup
+            // matches. Clearing the located highlight restores normal GFM layout.
+            Text(CoveSearchHighlight.text(text, query: searchQuery))
+                .font(.body).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+        } else if MarkdownPlainText.isPlain(text) {
             // Preserve Text's intrinsic height and accessibility for the common
             // history row, without MarkdownUI's block-margin preference layout.
             Text(text)
@@ -24,9 +32,13 @@ struct MarkdownMessageView: View {
     }
 
     private var richBody: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Markdown(text)
-                .markdownTheme(Self.theme)
+        let prepared = CovePreparedMarkdown.cached(text)
+        return VStack(alignment: .leading, spacing: 6) {
+            Markdown(prepared.content)
+                .markdownTheme(Self.theme.codeBlock { configuration in
+                    codeBlock(content: configuration.content, language: configuration.language, prepared: prepared)
+                        .markdownMargin(top: 4, bottom: 10)
+                })
                 .markdownBlockStyle(\.paragraph) { configuration in
                     Self.paragraph(configuration)
                         .accessibilityIdentifier(id.map { "chat.message.\($0)" } ?? "markdown.paragraph")
@@ -41,7 +53,7 @@ struct MarkdownMessageView: View {
                 })
             // SwiftUI Text cannot host an inline button. Mixed-text images get an
             // explicit control below the body; image-only paragraphs stay in place.
-            ForEach(MarkdownImageReferences.inline(in: text)) { reference in
+            ForEach(prepared.images) { reference in
                 VStack(alignment: .leading, spacing: 6) {
                     if !reference.label.isEmpty {
                         Text(reference.label).font(.caption).foregroundStyle(.secondary)
@@ -56,6 +68,30 @@ struct MarkdownMessageView: View {
     }
 
     private static let accent = CoveStyle.accentText
+
+    @ViewBuilder private func codeBlock(content: String, language: String?, prepared: CovePreparedMarkdown) -> some View {
+        if language == "widget", let widgetContext, let onWidgetSend {
+            switch prepared.widgets.entry(for: content) {
+            case .widget(let document):
+                let key = document.id + ":" + CoveWidgetMarkdownIndex.digest(content)
+                CoveWidgetView(document: document, contextKey: widgetContext + ":" + key) { text in
+                    try onWidgetSend(text, key)
+                }
+                .id(widgetContext + ":" + key)
+            case .invalid(let reason):
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("卡片无法显示", systemImage: "exclamationmark.triangle").font(.subheadline)
+                    Text(reason).font(.caption).foregroundStyle(.secondary)
+                    DisclosureGroup("查看卡片源码") { MarkdownCodeBlock(content: content, language: "json") }
+                }
+                .accessibilityIdentifier("widget.invalid")
+            case nil:
+                MarkdownCodeBlock(content: content, language: language)
+            }
+        } else {
+            MarkdownCodeBlock(content: content, language: language)
+        }
+    }
 
     private static let theme = MarkdownUI.Theme.basic
         .text { FontSize(17); ForegroundColor(.primary) }
@@ -128,6 +164,35 @@ struct MarkdownMessageView: View {
             .fixedSize(horizontal: false, vertical: true)
             .relativeLineSpacing(.em(0.04))
             .markdownMargin(top: 0, bottom: 5)
+    }
+}
+
+/// Immutable parse artifacts, keyed by the exact source (not message identity).
+/// Unlike State(initialValue: MarkdownContent(...)), cache hits do not reparse
+/// when unrelated store/keyboard updates reinitialize a message view.
+final class CovePreparedMarkdown {
+    let content: MarkdownContent
+    let images: [MarkdownImageReference]
+    let widgets: CoveWidgetMarkdownIndex
+    private static let cache: NSCache<NSString, CovePreparedMarkdown> = {
+        let cache = NSCache<NSString, CovePreparedMarkdown>()
+        cache.countLimit = 128
+        cache.totalCostLimit = 2 * 1024 * 1024
+        return cache
+    }()
+
+    private init(_ source: String) {
+        content = MarkdownContent(source)
+        widgets = CoveWidgetMarkdownIndex(source)
+        images = source.contains("!") ? MarkdownImageReferences.inline(in: source) : []
+    }
+
+    static func cached(_ source: String) -> CovePreparedMarkdown {
+        let key = source as NSString
+        if let value = cache.object(forKey: key) { return value }
+        let value = CovePreparedMarkdown(source)
+        cache.setObject(value, forKey: key, cost: source.utf8.count)
+        return value
     }
 }
 

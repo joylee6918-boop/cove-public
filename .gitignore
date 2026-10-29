@@ -39,3 +39,22 @@ credentials.json
 /uploads/
 /backups/
 /HANDOFF.md
+
+# Keep private release evidence, source snapshots, and editor state local
+/qa/private/
+/release-private/
+*.bak
+*.backup
+*.before-*
+*.tar
+*.tar.gz
+*.zip
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+/ios/.build/
+/.build/
+/.swiftpm/
+/coverage/
+/.coverage
+/ios/Cove/connection*.json
+/ios/Cove/auth*.json

@@ -7,12 +7,14 @@ import time
 import sys
 import shlex
 import unittest
+from unittest.mock import patch
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
+from urllib.parse import urlencode
 
-from cove import Application
+from cove import Application, health_snapshot
 from runtime import CodexRuntime
 from storage import Store, now
 
@@ -32,9 +34,6 @@ class FakeRuntime:
         while not self.gate.wait(.01):
             if cancelled.is_set():
                 return 'interrupted', None
-        if job['user']['text'] == 'health':
-            health, version = self.store.health_for_tool()
-            self.store.mark_health_read(health, version)
         self.store.stream(job['message'], '回复：' + job['user']['text'])
         return 'complete', None
 
@@ -75,6 +74,18 @@ class HTTPTests(unittest.TestCase):
         except HTTPError as error:
             return error.code, json.loads(error.read())
 
+    def request_raw(self, filename, mime, data, auth=True):
+        query = urlencode({'filename': filename, 'mime': mime})
+        headers = {'Content-Type': 'application/octet-stream'}
+        if auth:
+            headers['Authorization'] = 'Bearer ' + TOKEN
+        req = Request(self.base + '/v1/attachments?' + query, data=data, headers=headers, method='POST')
+        try:
+            with urlopen(req, timeout=3) as response:
+                return response.status, json.loads(response.read())
+        except HTTPError as error:
+            return error.code, json.loads(error.read())
+
     def poll(self, id='a', cursor=0):
         return self.request('GET', f'/v1/messages?conversationID={id}&after={cursor}')[1]
 
@@ -92,6 +103,45 @@ class HTTPTests(unittest.TestCase):
         self.assertEqual(self.request('GET', '/v1/health', auth=False)[0], 401)
         self.assertEqual(self.request('POST', '/v1/messages', {'id': 'x'}, auth=False)[0], 401)
         self.assertEqual(self.request('GET', '/v1/messages?conversationID=a&after=-1')[0], 400)
+
+    def test_raw_attachment_upload_keeps_exact_bytes_and_legacy_json(self):
+        payload = b'\x00raw\xffbytes'
+        status, uploaded = self.request_raw('原图 1.bin', 'application/x-test', payload)
+        self.assertEqual(status, 200)
+        self.assertEqual(uploaded['filename'], '原图 1.bin')
+        downloaded = self.request('GET', uploaded['url'])
+        self.assertEqual(downloaded, (200, payload))
+
+        legacy = self.request('POST', '/v1/attachments', {
+            'filename': 'legacy.txt', 'mime': 'text/plain',
+            'dataBase64': base64.b64encode(b'legacy').decode(),
+        })
+        self.assertEqual(legacy[0], 200)
+        self.assertEqual(self.request_raw('empty.txt', 'text/plain', b'')[0], 200)
+        self.assertEqual(self.request_raw('bad.bin', 'application/octet-stream', b'', auth=False)[0], 401)
+
+    def test_memory_calendar_requires_auth_strict_month_and_reports_unavailable(self):
+        from memory_calendar import CalendarError
+        with patch('cove.read_memory_calendar') as read:
+            self.assertEqual(self.request('GET', '/v1/memory/calendar?month=2026-09', auth=False)[0], 401)
+            read.assert_not_called()
+            for query in ('', '?month=', '?month=2026-09&month=2026-08', '?month=2026-09&path=secret'):
+                if query == '?month=':
+                    continue  # Module validates the value after route shape validation.
+                self.assertEqual(self.request('GET', '/v1/memory/calendar' + query)[0], 400)
+            read.assert_not_called()
+            read.side_effect = CalendarError(503, 'OB 数据未知')
+            status, body = self.request('GET', '/v1/memory/calendar?month=2026-09')
+            self.assertEqual((status, body), (503, {'error': 'OB 数据未知'}))
+            self.assertEqual(self.runtime.calls, [])
+
+    def test_memory_calendar_returns_only_successful_metadata_payload(self):
+        value = {'month':'2026-09','timezone':'Asia/Shanghai','source':'ombre','metric':'created',
+                 'days':[{'date':'2026-09-16','count':3}],'total':3,'updatedAt':now()}
+        with patch('cove.read_memory_calendar', return_value=value) as read:
+            self.assertEqual(self.request('GET', '/v1/memory/calendar?month=2026-09'), (200, value))
+            read.assert_called_once_with('2026-09')
+            self.assertEqual(self.runtime.calls, [])
 
     def test_device_registration_unregister_and_offline_conversation_id(self):
         device = 'A' * 64
@@ -144,7 +194,7 @@ class HTTPTests(unittest.TestCase):
         self.assertEqual(self.request('GET', '/v1/health/history?days=0')[0], 400)
         self.assertEqual(self.request('GET', '/v1/health/history?days=7', auth=False)[0], 401)
         self.request('POST', '/v1/messages', {'id': 'health-msg', 'conversationID': 'a', 'text': 'health'}); self.wait_done()
-        viewed = self.request('GET', '/v1/health')[1]; self.assertIsNotNone(viewed['readAt']); self.assertEqual(viewed['syncedAt'], synced['syncedAt'])
+        viewed = self.request('GET', '/v1/health')[1]; self.assertIsNone(viewed['readAt']); self.assertEqual(viewed['syncedAt'], synced['syncedAt'])
         self.request('POST', '/v1/health', {'snapshot': snapshot}); self.assertIsNone(self.request('GET', '/v1/health')[1]['readAt'])
         bad = dict(snapshot, metrics=[dict(snapshot['metrics'][0], value=float('nan'))])
         self.assertEqual(self.request('POST', '/v1/health', {'snapshot': bad})[0], 400)
@@ -154,11 +204,46 @@ class HTTPTests(unittest.TestCase):
         self.store.mark_health_read(health, version)
         self.assertIsNone(self.store.health()['readAt'])
 
+    def test_health_upload_readback_is_authenticated_strict_and_exact(self):
+        captured = '2026-09-24T12:34:56.789Z'
+        snapshot = {'capturedAt': captured, 'metrics': [
+            {'id': 'steps', 'title': '步数', 'value': 42, 'unit': '步', 'sampledAt': captured}
+        ]}
+        status, ack = self.request('POST', '/v1/health', {'snapshot': snapshot})
+        self.assertEqual(status, 200)
+
+        path = '/v1/health/uploads?' + urlencode({'capturedAt': '2026-09-24T20:34:56.789+08:00'})
+        self.assertEqual(self.request('GET', path, auth=False)[0], 401)
+        status, readback = self.request('GET', path)
+        self.assertEqual(status, 200)
+        self.assertEqual(readback, {'snapshot': health_snapshot(snapshot), 'syncedAt': ack['syncedAt']})
+
+        for query in ('', '?capturedAt=', '?other=x',
+                      '?capturedAt=2026-09-24T12%3A34%3A56.789Z&other=x',
+                      '?capturedAt=2026-09-24T12%3A34%3A56.789Z&capturedAt=2026-09-24T12%3A34%3A56.789Z',
+                      '?capturedAt=2026-09-24T12%3A34%3A56.789'):
+            self.assertEqual(self.request('GET', '/v1/health/uploads' + query)[0], 400)
+        missing = '/v1/health/uploads?' + urlencode({'capturedAt': '2026-09-24T12:34:56.788Z'})
+        self.assertEqual(self.request('GET', missing)[0], 404)
+
+    def test_health_upload_readback_selects_exact_capture_among_same_day(self):
+        first = {'capturedAt': '2026-09-24T01:00:00.000Z', 'metrics': []}
+        second = {'capturedAt': '2026-09-24T02:00:00.000Z', 'metrics': [
+            {'id': 'steps', 'title': '步数', 'value': 7, 'unit': '步', 'sampledAt': '2026-09-24T02:00:00.000Z'}
+        ]}
+        self.request('POST', '/v1/health', {'snapshot': first})
+        second_ack = self.request('POST', '/v1/health', {'snapshot': second})[1]
+        query = urlencode({'capturedAt': second['capturedAt']})
+        readback = self.request('GET', '/v1/health/uploads?' + query)[1]
+        self.assertEqual(readback['snapshot'], health_snapshot(second))
+        self.assertEqual(readback['syncedAt'], second_ack['syncedAt'])
+        self.assertNotEqual(readback['snapshot'], first)
+
     def test_pulse_usage_attachment_interruption(self):
-        original = {'updated_at': 1700000000, 'last_signal': {'label': '想靠近'}, 'physical': {'energy': .6},
+        original = {'updated_at': 1700000000, 'summary': '当前想靠近', 'last_signal': {'label': '过期的想靠近'}, 'physical': {'energy': .6},
                     'desires': {'intimacy': {'value': .7, 'label': '抱抱'}}, 'senses': {'touch': {'value': .4, 'label': '温暖'}}, 'heartbeat': {'last_tick_at': 0}}
         self.pulse.write_text(json.dumps(original)); before = self.pulse.read_bytes()
-        pulse = self.request('GET', '/v1/pulse')[1]; self.assertEqual(pulse['summary'], '想靠近'); self.assertEqual(pulse['desires'][0]['detail'], '抱抱')
+        pulse = self.request('GET', '/v1/pulse')[1]; self.assertEqual(pulse['summary'], '当前想靠近'); self.assertNotEqual(pulse['summary'], '过期的想靠近'); self.assertEqual(pulse['desires'][0]['detail'], '抱抱')
         self.assertEqual(self.pulse.read_bytes(), before); self.assertEqual(pulse['updatedAt'], '2023-11-14T22:13:20Z')
         usage = self.request('GET', '/v1/usage')[1]; self.assertEqual(usage['windows'], []); self.assertTrue(usage['error'])
         uploaded = self.request('POST', '/v1/attachments', {'filename': 'note.txt', 'mime': 'text/plain', 'dataBase64': base64.b64encode('用户'.encode()).decode()})[1]
@@ -182,6 +267,51 @@ class HTTPTests(unittest.TestCase):
 
 
 class RecoveryTests(unittest.TestCase):
+    def test_window_reset_detaches_thread_and_marker_is_one_shot(self):
+        with tempfile.TemporaryDirectory() as temp:
+            store = Store(temp); store.create_conversation('a'); store.bind_thread('a', 'old-thread')
+            self.assertIsNone(store.consume_window_reset('a'))
+            self.assertEqual(store.mark_window_reset('a'), 'old-thread')
+            self.assertIsNone(store.conversation('a')['thread']); store.close()
+            restored = Store(temp)
+            self.assertEqual(restored.consume_window_reset('a'), {'previousThread': 'old-thread'})
+            self.assertIsNone(restored.consume_window_reset('a'))
+            restored.close()
+
+    def test_health_upload_readback_survives_store_reopen(self):
+        with tempfile.TemporaryDirectory() as temp:
+            captured = '2026-09-24T08:09:10.123Z'
+            snapshot = {'capturedAt': captured, 'metrics': []}
+            store = Store(temp)
+            synced = store.upload_health(snapshot)
+            self.assertEqual(store.health_upload('2026-09-24T10:09:10.123+02:00'),
+                             {'snapshot': snapshot, 'syncedAt': synced})
+            store.close()
+            restored = Store(temp)
+            self.assertEqual(restored.health_upload(captured),
+                             {'snapshot': snapshot, 'syncedAt': synced})
+            restored.close()
+
+    def test_pulse_note_is_wake_scoped_idempotent_and_dashboard_is_read_only(self):
+        from pulse_read import dashboard, recent_user_messages
+        with tempfile.TemporaryDirectory() as temp:
+            store = Store(temp); store.create_conversation('a')
+            store.accept({'id': 'normal', 'conversationID': 'a', 'text': 'hello'})
+            with store.lock, store.db:
+                store._put({'id': 'pulse-cove-one', 'conversationID': 'a', 'role': 'system', 'text': 'scheduled', 'createdAt': now(), 'status': 'sent'})
+                store.db.execute("INSERT INTO jobs VALUES(?, 'running', ?, ?)", ('pulse-cove-one', 'pulse-turn', 'pulse-assistant'))
+            args = {'thoughtSummary': '我想安静地看看她是否需要我。', 'intent': '保持安静'}
+            one = store.record_pulse_note('pulse-cove-one', 'pulse-turn', 'call', args)
+            self.assertEqual(store.record_pulse_note('pulse-cove-one', 'pulse-turn', 'call', args), one)
+            with self.assertRaises(Exception):
+                store.record_pulse_note('normal', 'pulse-turn', 'bad', args)
+            state = Path(temp) / 'state.json'
+            state.write_text(json.dumps({'updated_at': 1700000000, 'physical': {'energy': .5}}))
+            result = dashboard(state, Path(temp) / 'cove.sqlite3')
+            self.assertEqual(result['events'][0]['thoughtSummary'], args['thoughtSummary'])
+            self.assertEqual(recent_user_messages(Path(temp) / 'cove.sqlite3')[0]['id'], 'normal')
+            store.close()
+
     def test_message_revision_matches_durable_column_and_never_regresses(self):
         with tempfile.TemporaryDirectory() as temp:
             store=Store(temp); store.create_conversation('a')
@@ -248,7 +378,7 @@ class RecoveryTests(unittest.TestCase):
             restored.set_reaction('a','legacy',False); self.assertEqual(restored.poll('a',canceled['cursor'])['messages'],[])
             restored.close()
 
-    def test_health_tool_marks_only_after_successful_write_and_same_upload(self):
+    def test_legacy_health_tool_never_discloses_or_marks_uploaded_health(self):
         from unittest.mock import patch
         with tempfile.TemporaryDirectory() as temp:
             store = Store(temp)
@@ -265,10 +395,11 @@ class RecoveryTests(unittest.TestCase):
             self.assertIsNone(store.health()['readAt'])
             def successful_write(response):
                 self.assertIsNone(store.health()['readAt'])
-                self.assertTrue(response['result']['success'])
+                self.assertFalse(response['result']['success'])
+                self.assertNotIn('snapshot', str(response))
             runtime._send = successful_write
             runtime._server_request(request)
-            self.assertIsNotNone(store.health()['readAt'])
+            self.assertIsNone(store.health()['readAt'])
             # Identical content and identical sync timestamp still represent a new upload.
             with patch('storage.now', return_value='2026-09-13T00:00:00.000Z'):
                 store.upload_health(snapshot)
@@ -311,7 +442,13 @@ class RecoveryTests(unittest.TestCase):
                 self.assertEqual(resumes[-1]['cwd'], str(Path(temp).resolve()))
                 self.assertIn('mcp_servers.cove_files', resumes[-1]['config'])
                 starts = [p['input'][0]['text'] for method, p in runtime.calls if method == 'turn/start']
-                self.assertEqual(starts, ['COVE_TEST_UNCERTAIN', 'new explicit message'])
+                self.assertEqual([text.split('\n', 1)[0] for text in starts], ['COVE_TEST_UNCERTAIN', 'new explicit message'])
+                for text in starts:
+                    self.assertEqual(text.split('\n', 1)[1], '[Cove 长期记忆分工] '+__import__('memory_outbox').MEMORY_GUIDANCE+'\n'+__import__('little_thoughts').GUIDANCE)
+                from runtime import guidance_topics
+                self.assertTrue(guidance_topics('看看我的睡眠和心率')['health'])
+                self.assertTrue(guidance_topics('提醒我明早起床')['device'])
+                self.assertFalse(any(guidance_topics('抱抱我').values()))
             finally:
                 runtime.close(); store.close()
 
@@ -322,7 +459,7 @@ class RecoveryTests(unittest.TestCase):
             today = datetime.now(timezone.utc)
             for age in (10, 6, 1, 0):
                 store.upload_health({'capturedAt': (today-timedelta(days=age)).isoformat(), 'metrics': []})
-            store.upload_health({'capturedAt': today.isoformat(), 'metrics': [{'id': 'steps', 'value': 42}]})
+            store.upload_health({'capturedAt': (today+timedelta(seconds=1)).isoformat(), 'metrics': [{'id': 'steps', 'value': 42}]})
             week = store.health_history(7)['snapshots']
             self.assertEqual(len(week), 3); self.assertEqual(week[-1]['metrics'][0]['value'], 42)
             self.assertEqual(len(store.health_history(1)['snapshots']), 1)
@@ -349,7 +486,7 @@ class RecoveryTests(unittest.TestCase):
                     self.assertEqual(status, 'complete')
                     self.assertEqual(store._message(job['assistant'])['text'], 'actual final ' + store.conversation(conversation)['thread'])
                 self.assertNotEqual(store.conversation('a')['thread'], store.conversation('b')['thread'])
-                self.assertIsNotNone(store.health()['readAt'])
+                self.assertIsNone(store.health()['readAt'])
                 self.assertEqual(runtime.usage()['windows'][0]['usedPercent'], 17)
                 # New stdio connection resumes persisted app thread, never thread/list/latest.
                 original = store.conversation('a')['thread']; runtime.close()

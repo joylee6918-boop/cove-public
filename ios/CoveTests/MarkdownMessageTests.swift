@@ -3,6 +3,18 @@ import MarkdownUI
 @testable import Cove
 
 final class MarkdownMessageTests: XCTestCase {
+    func testPreparedMarkdownReusesBothParsesAndInvalidatesOnSourceChange() {
+        let source = "**hello** inline ![image](https://example.com/test.png)"
+        let first = CovePreparedMarkdown.cached(source)
+        XCTAssertTrue(first === CovePreparedMarkdown.cached(source))
+        XCTAssertEqual(first.content, MarkdownContent(source))
+        XCTAssertEqual(first.images, MarkdownImageReferences.inline(in: source))
+        let changed = CovePreparedMarkdown.cached(source + " new")
+        XCTAssertFalse(first === changed)
+        XCTAssertEqual(changed.content, MarkdownContent(source + " new"))
+        XCTAssertTrue(CovePreparedMarkdown.cached("**no images**").images.isEmpty)
+    }
+
     func testPlainHistoryFastPathDoesNotBypassMarkdownSyntax() {
         XCTAssertTrue(MarkdownPlainText.isPlain("历史示例 600\n这是用于验证长对话滚动的示例消息。"))
         for source in ["# 标题", "**粗体**", "1. 列表", "1) 列表", "a &amp; b", "- 项目", "文本\n---", "文本\n===", "前 ![图](https://example.com/a.png)", "https://example.com", "<b>HTML</b>", "    code", "段落\n\n段落", "换行  \n文本", "hello@example.com", "表 | 格"] {

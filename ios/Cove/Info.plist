@@ -9,11 +9,24 @@
   <key>CFBundleShortVersionString</key><string>$(MARKETING_VERSION)</string>
   <key>CFBundleVersion</key><string>$(CURRENT_PROJECT_VERSION)</string>
   <key>LSRequiresIPhoneOS</key><true/>
-  <key>UILaunchScreen</key><dict/>
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>CoveLaunchBackground</string>
+	</dict>
   <key>UIApplicationSceneManifest</key><dict><key>UIApplicationSupportsMultipleScenes</key><false/></dict>
   <key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string></array>
   <key>UISupportedInterfaceOrientations~ipad</key><array><string>UIInterfaceOrientationPortrait</string><string>UIInterfaceOrientationPortraitUpsideDown</string><string>UIInterfaceOrientationLandscapeLeft</string><string>UIInterfaceOrientationLandscapeRight</string></array>
-  <key>NSHealthShareUsageDescription</key><string>在你允许后读取睡眠、心率和活动，显示在 Cove，并同步到你的私人服务器，让 助手 在对话中了解你的近况。</string>
-  <key>UIBackgroundModes</key><array><string>remote-notification</string><string>fetch</string></array>
+  <key>NSPhotoLibraryUsageDescription</key><string>在你打开附件面板并允许后显示照片网格，供你选择发送。你可以只允许选定的照片；只有你点发送的图片才会上传。</string>
+  <key>NSPhotoLibraryAddUsageDescription</key><string>仅在你选择保存旅行照片时，将生成的图片保存到相册。</string>
+  <key>PHPhotoLibraryPreventAutomaticLimitedAccessAlert</key><true/>
+  <key>NSMicrophoneUsageDescription</key><string>用于你主动录制语音消息和开始实时通话。</string>
+  <key>NSRemindersFullAccessUsageDescription</key><string>在你允许后读取提醒事项，并在你确认操作时创建、完成或删除提醒事项。开启权限不会自动上传已有记录。</string>
+  <key>NSCalendarsFullAccessUsageDescription</key><string>在你允许后读取日程和空闲时间，并在你确认操作时添加或删除日程。开启权限不会自动上传已有记录。</string>
+  <key>NSAlarmKitUsageDescription</key><string>用于设置和取消你在 Cove 中确认创建的系统闹钟。</string>
+  <key>NSBluetoothAlwaysUsageDescription</key><string>在你主动查找并授权时连接附近的啵啵贝或分欣玩具，由 Cove 发送控制、保活与全停指令。</string>
+  <key>NSSpeechRecognitionUsageDescription</key><string>用于在设备本机把你主动录制的语音转成可编辑文字。</string>
+  <key>NSHealthShareUsageDescription</key><string>在你允许后读取睡眠阶段、心率、血氧、身体指标、活动与健身记录并保存在本机。你可以逐次同意分享，或明确开启持续读取；仅按已授权范围将对应时段和项目发送给你自己的 Cove 服务。</string>
+  <key>UIBackgroundModes</key><array><string>remote-notification</string><string>fetch</string><string>bluetooth-central</string></array>
   <key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>
 </dict></plist>

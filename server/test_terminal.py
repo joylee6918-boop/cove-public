@@ -185,6 +185,24 @@ class ConsoleHTTPTests(unittest.TestCase):
 
 
 class ConsoleStorageTests(unittest.TestCase):
+    def test_app_server_activity_is_visible_without_private_reasoning(self):
+        with tempfile.TemporaryDirectory() as temp:
+            store = Store(temp); store.create_conversation('a')
+            rt = CodexRuntime(store, temp)
+            rt.active = {'conversation':'a','thread':'thread','turn':'turn','cancel':threading.Event(),'message':'none'}
+            common = {'threadId':'thread','turnId':'turn'}
+            rt._terminal_notification({'method':'item/started','params':dict(common, item={'type':'reasoning','id':'think','summary':['MUST NOT LEAK']})})
+            rt._terminal_notification({'method':'turn/plan/updated','params':dict(common, explanation='处理任务', plan=[{'step':'读取附件','status':'inProgress'}])})
+            rt._terminal_notification({'method':'item/started','params':dict(common, item={'type':'webSearch','id':'web'})})
+            rt._terminal_notification({'method':'item/mcpToolCall/progress','params':dict(common, itemId='tool', message='正在读取服务')})
+            rt._terminal_notification({'method':'item/commandExecution/terminalInteraction','params':dict(common, itemId='cmd', processId='p', stdin='PASSWORD MUST NOT LEAK')})
+            rt._terminal_notification({'method':'item/completed','params':dict(common, item={'type':'reasoning','id':'think','summary':['MUST NOT LEAK']})})
+            text = json.dumps(store.terminal_poll('a', 0), ensure_ascii=False)
+            for visible in ('正在思考', '读取附件', '正在搜索网络', '正在读取服务', '已向运行中的命令发送输入', '思考完成'):
+                self.assertIn(visible, text)
+            self.assertNotIn('MUST NOT LEAK', text)
+            rt.close(); store.close()
+
     def test_persistent_settings_events_and_permission_response(self):
         with tempfile.TemporaryDirectory() as temp:
             store=Store(temp);store.create_conversation('a');store.set_terminal_model('a','fixture-sol','high');store.terminal_event('a','output','Authorization: Bearer secret-value')

@@ -93,6 +93,16 @@ class TerminalRuntime:
             elif method == 'turn/completed':
                 self._console('turn', '回合结束：' + str(p['turn'].get('status')))
                 self._clear_approvals('回合结束', send=False)
+            elif method == 'turn/plan/updated':
+                lines = []
+                if p.get('explanation'):
+                    lines.append(str(p['explanation']))
+                for step in p.get('plan', [])[:30]:
+                    if isinstance(step, dict) and step.get('step'):
+                        marker = {'completed': '✓', 'inProgress': '▶', 'pending': '·'}.get(step.get('status'), '·')
+                        lines.append(marker + ' ' + str(step['step']))
+                if lines:
+                    self._console('plan', '\n'.join(lines))
             elif method == 'item/commandExecution/outputDelta':
                 # Buffer whole lines so credential redaction cannot be bypassed by chunk boundaries.
                 key = p.get('itemId'); record = self.command_output.setdefault(key, {'tail': '', 'bytes': 0, 'discard': False})
@@ -106,6 +116,12 @@ class TerminalRuntime:
                     record['discard'] = False
                 if len(record['tail']) > 16000:
                     record['tail'] = ''; record['discard'] = True
+            elif method == 'item/commandExecution/terminalInteraction':
+                # Do not persist stdin text: it can contain passwords or tokens.
+                self._console('command', '已向运行中的命令发送输入', p.get('itemId'))
+            elif method == 'item/mcpToolCall/progress':
+                if p.get('message'):
+                    self._console('tool', p['message'], p.get('itemId'))
             elif method in ('item/started', 'item/completed'):
                 item = p.get('item', {}); key = item.get('id'); done = method == 'item/completed'
                 if not done and item.get('type') in ('commandExecution', 'fileChange'):
@@ -123,9 +139,35 @@ class TerminalRuntime:
                     self._console('fileChange', ('完成：' if done else '文件更改：') + json.dumps(item.get('changes', []), ensure_ascii=False), key)
                 elif item.get('type') in ('mcpToolCall', 'dynamicToolCall'):
                     # Never serialize tool arguments/results: may contain health, bytes or credentials.
-                    self._console('tool', str(item.get('server', '')) + ' ' + str(item.get('tool', '')) + (' · 完成' if done else ' · 开始'), key)
+                    suffix = ' · 开始'
+                    if done:
+                        result = item.get('result')
+                        failed = bool(item.get('error')) or str(item.get('status', '')).casefold() in ('failed', 'error') or (isinstance(result, dict) and result.get('isError') is True)
+                        succeeded = isinstance(result, dict) and result.get('isError') is False
+                        suffix = ' · 失败' if failed else (' · 成功' if succeeded else ' · 已结束（结果未记录）')
+                    self._console('tool', str(item.get('server', '')) + ' ' + str(item.get('tool', '')) + suffix, key)
                 elif item.get('type') == 'agentMessage' and done:
                     self._console('message', item.get('text', ''), key)
+                elif item.get('type') == 'reasoning':
+                    # Never expose private reasoning or summaries. The lifecycle
+                    # is still useful execution telemetry, like the CLI spinner.
+                    self._console('status', '思考完成' if done else '正在思考…', key)
+                elif item.get('type') == 'plan':
+                    self._console('plan', item.get('text', '') if done else '正在整理执行计划…', key)
+                elif item.get('type') == 'webSearch':
+                    self._console('status', '网络搜索完成' if done else '正在搜索网络…', key)
+                elif item.get('type') == 'imageView':
+                    self._console('status', '图片读取完成' if done else '正在读取图片…', key)
+                elif item.get('type') == 'imageGeneration':
+                    self._console('status', '图片生成完成' if done else '正在生成图片…', key)
+                elif item.get('type') == 'contextCompaction':
+                    self._console('status', '上下文整理完成' if done else '正在整理上下文…', key)
+                elif item.get('type') in ('collabAgentToolCall', 'subAgentActivity'):
+                    self._console('status', '协作任务完成' if done else '正在处理协作任务…', key)
+                elif item.get('type') == 'sleep':
+                    self._console('status', '等待结束' if done else '正在等待…', key)
+                elif item.get('type') == 'agentMessage' and not done:
+                    self._console('status', '正在组织回复…', key)
             elif method == 'error':
                 self._console('error', 'Codex 执行出错' + ('，正在重试' if p.get('willRetry') else ''))
 

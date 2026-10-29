@@ -149,6 +149,8 @@ private struct CoveStickerImport: Identifiable {
 
 struct CoveStickerPicker: View {
     var onSend: () -> Void = {}
+    var embedded = false
+    var onReturnToKeyboard: (() -> Void)? = nil
     @EnvironmentObject private var store: CoveStore
     @Environment(\.dismiss) private var dismiss
     @State private var owner = "user"
@@ -162,10 +164,10 @@ struct CoveStickerPicker: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 12) {
+            VStack(spacing: embedded ? 6 : 12) {
                 Picker("表情包归属", selection: $owner) {
                     Text("我的").tag("user")
-                    Text("助手 的").tag("assistant")
+                    Text("Assistant 的").tag("assistant")
                 }.pickerStyle(.segmented).padding(.horizontal).accessibilityIdentifier("stickers.owner")
                 if store.previewMode {
                     Label("界面预览 · 不会读取或上传真实表情包", systemImage: "eye")
@@ -181,10 +183,10 @@ struct CoveStickerPicker: View {
                 }
                 ScrollView {
                     if visible.isEmpty {
-                        ContentUnavailableView(owner == "user" ? "还没有表情包" : "助手 还没有保存表情包",
+                        ContentUnavailableView(owner == "user" ? "还没有表情包" : "Assistant 还没有保存表情包",
                             systemImage: "face.smiling", description: Text(owner == "user"
                                 ? "从照片或文件添加，也可以长按聊天里的图片保存。"
-                                : "发图片给 助手，请他保存后，就会出现在这里。"))
+                                : "发图片给 Assistant，请他保存后，就会出现在这里。"))
                     } else {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 12)], spacing: 16) {
                             ForEach(visible) { sticker in
@@ -192,15 +194,18 @@ struct CoveStickerPicker: View {
                                     guard !sending else { return }
                                     sending = true
                                     Task {
-                                        if await store.sendSticker(sticker) { onSend(); dismiss() }
+                                        if await store.sendSticker(sticker) {
+                                            onSend()
+                                            if !embedded { dismiss() }
+                                        }
                                         else { failure = store.errorMessage }
                                         sending = false
                                     }
                                 } label: {
                                     VStack(spacing: 6) {
-                                        CoveStickerView(attachment: sticker.attachment, maximumSide: 84, animate: false)
+                                        CoveStickerView(attachment: sticker.attachment, maximumSide: embedded ? 64 : 84, animate: false)
                                         Text(sticker.label).font(.caption).foregroundStyle(CoveStyle.text).lineLimit(2)
-                                    }.frame(maxWidth: .infinity, minHeight: 116).contentShape(Rectangle())
+                                    }.frame(maxWidth: .infinity, minHeight: embedded ? 88 : 116).contentShape(Rectangle())
                                 }.buttonStyle(.plain).disabled(sending || store.previewMode)
                                     .accessibilityLabel("发送表情包：\(sticker.label)")
                                     .accessibilityIdentifier("stickers.send.\(sticker.id)")
@@ -221,7 +226,20 @@ struct CoveStickerPicker: View {
             }
             .background(CoveStyle.background)
             .navigationTitle("表情包").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() }.frame(minHeight: 44) } }
+            .toolbar {
+                if !embedded {
+                    ToolbarItem(placement: .confirmationAction) {
+                        if let onReturnToKeyboard {
+                            Button(action: onReturnToKeyboard) {
+                                Image(systemName: "keyboard").frame(width: 44, height: 44)
+                            }.accessibilityLabel("切回键盘").accessibilityIdentifier("stickers.keyboard")
+                        } else {
+                            Button("完成") { dismiss() }.frame(minHeight: 44)
+                        }
+                    }
+                }
+            }
+            .toolbar(embedded ? .hidden : .visible, for: .navigationBar)
             .task { await store.reloadStickers() }
             .onChange(of: photo) { _, selected in
                 guard let selected else { return }
@@ -310,7 +328,7 @@ struct CoveSaveStickerSheet: View {
                 Section {
                     CoveStickerView(attachment: attachment).frame(maxWidth: .infinity)
                     TextField("表情包名字", text: $name)
-                } footer: { Text("保存到「我的」表情包；重复保存不会生成两份。助手 可以另外保存到他自己的库。") }
+                } footer: { Text("保存到「我的」表情包；重复保存不会生成两份。Assistant 可以另外保存到他自己的库。") }
                 if let failure { Section { Text(failure).foregroundStyle(CoveStyle.error) } }
             }.navigationTitle("保存表情包").navigationBarTitleDisplayMode(.inline)
                 .toolbar {

@@ -100,6 +100,7 @@ final class CoveTerminalViewModel: ObservableObject {
     @Published private(set) var busy = false
     @Published private(set) var isPolling = false
     @Published private(set) var isSubmitting = false
+    @Published private(set) var isStopping = false
     @Published private(set) var isChangingModel = false
     @Published private(set) var approvalInFlight: String?
     @Published private(set) var model: String?
@@ -115,7 +116,36 @@ final class CoveTerminalViewModel: ObservableObject {
     private var runID = UUID()
     private var pendingInput: (id: String, text: String)?
     private var pendingControl: (id: String, text: String)?
+    private var pendingStop: (id: String, text: String)?
     private var needsTail = true
+
+    #if DEBUG
+    // Explicit synthetic UI fixture. No service is assigned and no polling or
+    // production control action is enabled by this path.
+    func loadLocalScrollFixture() {
+        guard service == nil else { return }
+        conversationID = "terminal-local-scroll-fixture"
+        events = (1...120).map { id in
+            CoveTerminalEvent(id: id, kind: "local-fixture", text: "合成日志 \(id)\n本地滚动测试，不是实际执行结果。",
+                              createdAt: Date(timeIntervalSince1970: Double(id)), threadID: nil, turnID: nil, itemID: nil)
+        }
+        cursor = 120
+    }
+
+    func appendLocalScrollFixture(growingLastEvent: Bool = false) {
+        guard service == nil, conversationID == "terminal-local-scroll-fixture", let last = events.last else { return }
+        if growingLastEvent {
+            events[events.count - 1] = CoveTerminalEvent(id: last.id, kind: last.kind,
+                text: last.text + String(repeating: "\n同一条示例日志继续输出，内容变高。", count: 12),
+                createdAt: last.createdAt, threadID: nil, turnID: nil, itemID: nil)
+        } else {
+            let id = last.id + 1
+            events.append(CoveTerminalEvent(id: id, kind: "local-fixture", text: "合成新增日志 \(id)\n新内容应自动跟随，无需手动拖动。",
+                createdAt: Date(timeIntervalSince1970: Double(id)), threadID: nil, turnID: nil, itemID: nil))
+            cursor = id
+        }
+    }
+    #endif
 
     // The SwiftUI sheet owns this task, so closing/backgrounding cancels polling.
     func run(service: any CoveTerminalService, conversationID: String, preview: Bool) async {
@@ -124,7 +154,7 @@ final class CoveTerminalViewModel: ObservableObject {
         runID = token
         if self.conversationID != conversationID {
             self.conversationID = conversationID
-            events = []; approvals = []; cursor = 0; draft = ""; pendingInput = nil; pendingControl = nil
+            events = []; approvals = []; cursor = 0; draft = ""; pendingInput = nil; pendingControl = nil; pendingStop = nil
             connected = false; busy = false; model = nil; effort = nil; notice = nil
         }
         self.service = service
@@ -158,7 +188,7 @@ final class CoveTerminalViewModel: ObservableObject {
             }
             connectionError = nil
         } catch is CancellationError { return }
-        catch { if token == runID { connected = false; connectionError = error.localizedDescription } }
+        catch { if token == runID { connected = false; connectionError = connectionMessage(for: error) } }
     }
 
     // The response cursor belongs to one conversation; never mix another thread's events.
@@ -228,7 +258,7 @@ final class CoveTerminalViewModel: ObservableObject {
             let next = try await service.newContext(model: model, effort: effort)
             guard context == conversationID, token == runID else { return }
             conversationID = next
-            events = []; approvals = []; cursor = 0; draft = ""; pendingInput = nil; pendingControl = nil
+            events = []; approvals = []; cursor = 0; draft = ""; pendingInput = nil; pendingControl = nil; pendingStop = nil
             needsTail = true; busy = false
             notice = "已开启新对话，旧记录保留。"; error = nil
             await refresh()
@@ -237,7 +267,28 @@ final class CoveTerminalViewModel: ObservableObject {
         }
     }
 
-    func stopCurrentReply() async { await control("/stop") }
+    // Cancellation must not wait behind a stalled ordinary input request.
+    func stopCurrentReply() async {
+        guard let service, !isStopping, isPolling else { return }
+        let context = conversationID
+        if pendingStop == nil { pendingStop = (UUID().uuidString, "/stop") }
+        guard let request = pendingStop else { return }
+        isStopping = true
+        defer { isStopping = false }
+        do {
+            let result = try await service.input(id: request.id, conversationID: context, text: request.text)
+            guard result.ok else { throw TerminalError.unconfirmed }
+            guard context == conversationID else { return }
+            pendingStop = nil
+            notice = "已提交停止当前回复的请求。"
+            error = nil
+            await refresh()
+        } catch {
+            if context == conversationID {
+                self.error = error.localizedDescription + "；停止请求未确认，可再点一次。"
+            }
+        }
+    }
     func showHelp() async { await control("/help") }
 
     private func control(_ text: String) async {
@@ -301,5 +352,24 @@ final class CoveTerminalViewModel: ObservableObject {
     private enum TerminalError: LocalizedError {
         case unconfirmed
         var errorDescription: String? { "服务没有确认这次操作" }
+    }
+
+    private func connectionMessage(for error: Error) -> String {
+        let value = error as NSError
+        guard value.domain == NSURLErrorDomain else {
+            return error.localizedDescription + "；请检查 Cove 服务状态后点“刷新”。"
+        }
+        switch URLError.Code(rawValue: value.code) {
+        case .timedOut:
+            return "连接 Cove 服务超时。可先点“Esc · 停止”，再检查网络或服务状态。"
+        case .notConnectedToInternet, .networkConnectionLost:
+            return "当前网络不可用或已中断；恢复后点“刷新”。"
+        case .cannotFindHost, .cannotConnectToHost:
+            return "无法连接 Cove 服务地址；请核对设置中的服务地址和服务状态。"
+        case .secureConnectionFailed, .serverCertificateUntrusted, .serverCertificateHasBadDate, .serverCertificateHasUnknownRoot:
+            return "Cove 服务的 HTTPS 连接未通过安全校验；请检查证书和系统时间。"
+        default:
+            return error.localizedDescription + "；请检查网络和 Cove 服务状态后点“刷新”。"
+        }
     }
 }

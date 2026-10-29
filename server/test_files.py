@@ -42,7 +42,7 @@ class FileHTTPTests(unittest.TestCase):
             self.assertEqual(response.headers['X-Content-Type-Options'], 'nosniff')
             self.assertEqual(response.headers['Content-Type'], 'text/html')
             self.assertTrue(response.headers['Content-Disposition'].startswith('attachment;'))
-            self.assertIn('filename*=UTF-8\'\'%E7%94%A8', response.headers['Content-Disposition'])
+            self.assertIn('filename*=UTF-8\'\'%E7%94%A8%E6%88%B7', response.headers['Content-Disposition'])
         self.assertEqual(self.request('GET', attachment['url'], auth=False)[0], 401)
         self.assertEqual(self.request('POST', '/v1/attachments', {'filename': 'bad\r\nX-Foo: unsafe', 'mime': 'text/html', 'dataBase64': 'eA=='})[0], 400)
         self.assertEqual(self.request('POST', '/v1/attachments', {'filename': 'ok', 'mime': 'text/html\r\nX-Foo: unsafe', 'dataBase64': 'eA=='})[0], 400)

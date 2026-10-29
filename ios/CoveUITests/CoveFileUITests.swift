@@ -19,6 +19,56 @@ final class CoveFileUITests: XCTestCase {
         }
     }
 
+    func testPhotoEntryOpensSystemPickerWithoutIntermediatePanel() {
+        app.terminate()
+        app.launchArguments = ["--preview", "--test-native-photo-picker"]
+        app.launch()
+        let entry = app.buttons["chat.attachments"]
+        XCTAssertTrue(entry.waitForExistence(timeout: 10))
+        entry.tap()
+        let photoAction = app.buttons["chat.attachments.photos"]
+        XCTAssertTrue(photoAction.waitForExistence(timeout: 3))
+        photoAction.tap()
+        let photos = app.navigationBars["Photos"]
+        let chinesePhotos = app.navigationBars["照片"]
+        XCTAssertTrue(photos.waitForExistence(timeout: 8) || chinesePhotos.exists)
+        XCTAssertFalse(app.otherElements["attachments.panel"].exists)
+        XCTAssertFalse(app.buttons["attachments.camera"].exists)
+        screenshot("native-photos-direct")
+        attachHierarchy("native-photos-direct")
+        let cancel = app.buttons.matching(NSPredicate(format: "label == 'Cancel' OR label == '取消' OR label == 'Close' OR label == '关闭'")).firstMatch
+        XCTAssertTrue(cancel.waitForExistence(timeout: 3))
+        cancel.tap()
+        XCTAssertTrue(entry.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.otherElements["attachments.panel"].exists,
+                       "Cancelling Photos must return to chat, never an empty second sheet")
+    }
+
+    func testAttachmentMenuOpensNativeFilesAndCancelReturnsToChat() {
+        app.terminate()
+        app.launchArguments = ["--preview", "--test-native-file-picker"]
+        app.launch()
+        let entry = app.buttons["chat.attachments"]
+        XCTAssertTrue(entry.waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["chat.files"].exists, "Composer must have only one attachment entry")
+        screenshot("single-attachment-button")
+        entry.tap()
+        let files = app.buttons["chat.attachments.files"]
+        XCTAssertTrue(files.waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["chat.attachments.photos"].isHittable)
+        screenshot("attachment-photo-file-menu")
+        files.tap()
+        let cancel = app.buttons.matching(NSPredicate(format: "label == 'Cancel' OR label == '取消'")).firstMatch
+        XCTAssertTrue(cancel.waitForExistence(timeout: 8))
+        XCTAssertFalse(app.otherElements["attachments.panel"].exists)
+        XCTAssertFalse(app.navigationBars["Photos"].exists)
+        screenshot("native-files-direct")
+        attachHierarchy("native-files-direct")
+        cancel.tap()
+        XCTAssertTrue(entry.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.otherElements["attachments.panel"].exists)
+    }
+
     func testLocalHTMLInteractionSourceAndShare() throws {
         try openAttachment("file-preview-html")
         XCTAssertTrue(app.staticTexts["本地网页 · 外部资源不会加载"].waitForExistence(timeout: 5))
@@ -65,10 +115,82 @@ final class CoveFileUITests: XCTestCase {
         XCTAssertTrue(app.textFields["chat.input"].waitForExistence(timeout: 3))
     }
 
-    func testPreviewNeverEnablesAttachmentSending() throws {
-        XCTAssertTrue(app.buttons["chat.attachments"].exists)
-        XCTAssertFalse(app.buttons["chat.attachments"].isEnabled)
+    func testAttachmentPanelSwitchesCategoryWithoutSending() throws {
+        let input = app.textFields["chat.input"]
+        XCTAssertTrue(input.waitForExistence(timeout: 3))
+        input.tap()
+        input.typeText("附件面板草稿")
+
+        let attachments = app.buttons["chat.attachments"]
+        XCTAssertTrue(attachments.isHittable)
+        attachments.tap()
+        app.buttons["chat.attachments.photos"].tap()
+        XCTAssertTrue(app.otherElements["attachments.panel"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["界面预览 · 不读取或上传相册"].exists)
+        XCTAssertTrue(app.buttons["attachments.browsePhotos"].exists)
+        XCTAssertFalse(app.buttons["attachments.browsePhotos"].isEnabled, "Preview must not access the real system photo library")
+        XCTAssertEqual(app.staticTexts["attachments.title"].label, "照片")
+        XCTAssertFalse(app.buttons["attachments.confirmSend"].exists)
+        assertAttachmentHeaderTouchesGrid()
+        screenshot("attachment-panel-photos")
+
+        let files = app.buttons["attachments.files"]
+        XCTAssertTrue(files.isHittable)
+        files.tap()
+        XCTAssertTrue(files.isSelected)
+        XCTAssertTrue(app.staticTexts["界面预览 · 不读取文件"].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.buttons["attachments.browseFiles"].isEnabled)
+        XCTAssertFalse(app.buttons["attachments.confirmSend"].exists)
+        screenshot("attachment-panel-files")
+
+        app.buttons["attachments.photos"].tap()
+        XCTAssertTrue(app.buttons["attachments.photos"].isSelected)
+        XCTAssertTrue(app.staticTexts["界面预览 · 不读取或上传相册"].waitForExistence(timeout: 3))
+        app.buttons["attachments.close"].tap()
+        XCTAssertTrue(app.otherElements["attachments.panel"].waitForNonExistence(timeout: 3))
+        XCTAssertEqual(input.value as? String, "附件面板草稿")
         XCTAssertFalse(app.buttons["chat.send"].isEnabled)
+    }
+
+    func testAttachmentHeaderAndGridMoveTogetherAcrossSheetDetents() {
+        app.buttons["chat.attachments"].tap()
+        app.buttons["chat.attachments.photos"].tap()
+        let panel = app.otherElements["attachments.panel"]
+        XCTAssertTrue(panel.waitForExistence(timeout: 5))
+        assertAttachmentHeaderTouchesGrid()
+        let before = app.buttons["attachments.close"].frame.minY
+        let title = app.staticTexts["attachments.title"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        title.press(forDuration: 0.05, thenDragTo: title.withOffset(CGVector(dx: 0, dy: -300)))
+        expectation(for: NSPredicate { _, _ in
+            self.app.buttons["attachments.close"].frame.minY < before - 60
+        }, evaluatedWith: panel)
+        waitForExpectations(timeout: 4)
+        assertAttachmentHeaderTouchesGrid()
+        app.buttons["attachments.files"].tap()
+        let close = app.buttons["attachments.close"]
+        let files = app.scrollViews["attachments.fileList"]
+        XCTAssertTrue(files.exists)
+        XCTAssertLessThanOrEqual(files.frame.minY - close.frame.maxY, 20)
+        screenshot("attachment-single-surface-expanded")
+    }
+
+    private func assertAttachmentHeaderTouchesGrid(file: StaticString = #filePath, line: UInt = #line) {
+        let close = app.buttons["attachments.close"]
+        let grid = app.scrollViews["attachments.photoGrid"]
+        let camera = app.buttons["attachments.camera"]
+        XCTAssertTrue(close.waitForExistence(timeout: 3), file: file, line: line)
+        XCTAssertTrue(grid.exists, file: file, line: line)
+        XCTAssertFalse(camera.exists, "In-app camera entry has been removed", file: file, line: line)
+        // iOS 26 inset sheets scale their entire content in screen coordinates.
+        // Measure the local 44pt target, not the transformed ~42pt snapshot.
+        let sheetScale = grid.frame.width / app.frame.width
+        XCTAssertGreaterThanOrEqual(close.frame.height / sheetScale, 43.5, file: file, line: line)
+        XCTAssertLessThan(close.frame.midX, app.frame.midX, file: file, line: line)
+        XCTAssertGreaterThanOrEqual(grid.frame.minY, close.frame.maxY, file: file, line: line)
+        XCTAssertLessThanOrEqual(grid.frame.minY - close.frame.maxY, 20,
+                                 "Close belongs to the panel header immediately above its grid, not a separate full-screen header", file: file, line: line)
+        XCTAssertTrue(app.buttons["attachments.photos"].isHittable, file: file, line: line)
+        XCTAssertTrue(app.buttons["attachments.files"].isHittable, file: file, line: line)
     }
 
     private func openAttachment(_ id: String) throws {

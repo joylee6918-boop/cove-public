@@ -2,6 +2,16 @@
 
 Pinned dependencies for GFM rendering and local code syntax highlighting. No user code is evaluated by the highlighter.
 
+## WebRTC 150.0.0
+
+Binary distribution: https://github.com/stasel/WebRTC
+
+WebRTC source: https://webrtc.googlesource.com/src/
+
+The distribution and WebRTC source are provided under BSD-style licenses.
+The complete license bundled inside `WebRTC.xcframework` is included in the
+application framework and remains authoritative for the binary distribution.
+
 ## MarkdownUI 2.4.1
 
 Source: https://github.com/gonzalezreal/swift-markdown-ui

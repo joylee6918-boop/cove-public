@@ -59,8 +59,10 @@ final class CoveMarkdownUITests: XCTestCase {
         XCTAssertEqual(input.value as? String, expectedCode, "Paste must preserve every code character, indentation and newline without Markdown fences.")
         XCTAssertFalse(app.buttons["chat.send"].isEnabled, "Pasting code in preview must never enable network sending.")
         attach(app, name: "markdown-code-scrolled-copied-and-pasted")
-        scrollHistory(history, towardOlder: true)
-        if app.keyboards.firstMatch.exists { scrollHistory(history, towardOlder: true) }
+        // The six-line composer leaves a short viewport: a short interactive
+        // drag can legitimately spring the keyboard back. Use the supported
+        // history-background tap to close it, then verify the draft is intact.
+        history.coordinate(withNormalizedOffset: CGVector(dx: 0.02, dy: 0.4)).tap()
         expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: app.keyboards.firstMatch)
         waitForExpectations(timeout: 4)
         XCTAssertEqual(input.value as? String, expectedCode, "Dismissing the keyboard must preserve the pasted original code.")

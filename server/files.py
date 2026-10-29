@@ -135,9 +135,50 @@ SEND_TOOL = {'name': 'cove_send_file', 'description': 'Attach an existing regula
              'inputSchema': {'type': 'object', 'properties': {'path': {'type': 'string'}, 'filename': {'type': 'string'}, 'mime': {'type': 'string'}}, 'required': ['path'], 'additionalProperties': False}}
 STICKER_LIST_TOOL = {'name': 'cove_list_stickers', 'description': 'List your own persistent Cove sticker library (id, descriptive label and image metadata). Choose an appropriate existing sticker by label, then use cove_send_sticker. This never lists unshared user uploads.',
                      'inputSchema': {'type': 'object', 'properties': {}, 'additionalProperties': False}}
-STICKER_SAVE_TOOL = {'name': 'cove_save_sticker', 'description': 'Save an image that the user has already sent in this Cove conversation into your own persistent sticker library. Use its attachmentID from Cove attachment context and a short accurate descriptive label for later selection. PNG/JPEG/GIF/WebP only; original animation bytes are preserved. Does not send a reply or access arbitrary files.',
+STICKER_SAVE_TOOL = {'name': 'cove_save_sticker', 'description': 'Save an image that 用户 has already sent in this Cove conversation into your own persistent sticker library. Use its attachmentID from Cove attachment context and a short accurate descriptive label for later selection. PNG/JPEG/GIF/WebP only; original animation bytes are preserved. Does not send a reply or access arbitrary files.',
                      'inputSchema': {'type': 'object', 'properties': {'attachmentID': {'type': 'string'}, 'label': {'type': 'string', 'minLength': 1, 'maxLength': 120}}, 'required': ['attachmentID', 'label'], 'additionalProperties': False}}
 STICKER_SEND_TOOL = {'name': 'cove_send_sticker', 'description': 'Send a saved sticker from your own Cove sticker library as an image attachment in the current reply. Obtain stickerID from cove_list_stickers or cove_save_sticker. Exact original bytes, including GIF animation, are reused. No model turn or external message is started; this attaches only to the current active reply.',
                      'inputSchema': {'type': 'object', 'properties': {'stickerID': {'type': 'string'}}, 'required': ['stickerID'], 'additionalProperties': False}}
 STICKER_TOOLS = [STICKER_LIST_TOOL, STICKER_SAVE_TOOL, STICKER_SEND_TOOL]
-FILE_TOOLS = [CREATE_TOOL, SEND_TOOL] + STICKER_TOOLS
+VOICE_SEND_TOOL = {'name': 'cove_send_voice', 'description': 'Generate one spoken MP3 from short reply text using the owner-configured MiniMax voice and attach it to this same active Cove reply. This is a paid, explicitly configured server action: use only when a voice reply is genuinely intended. It never accepts an API key or voice id, never clones a voice, and never starts another message or call.',
+                   'inputSchema': {'type': 'object', 'properties': {'text': {'type': 'string', 'minLength': 1, 'maxLength': 2000}}, 'required': ['text'], 'additionalProperties': False}}
+VOICE_TOOLS = [VOICE_SEND_TOOL]
+FILE_TOOLS = [CREATE_TOOL, SEND_TOOL] + STICKER_TOOLS + VOICE_TOOLS
+
+PULSE_NOTE_TOOL = {'name': 'cove_record_pulse_note', 'description': 'During a Pulse wake only, record a short, deliberately public-facing reflection and intent for the private Pulse timeline. This is not hidden reasoning and does not send a chat message or claim that an action ran.',
+                   'inputSchema': {'type': 'object', 'properties': {
+                       'thoughtSummary': {'type': 'string', 'minLength': 1, 'maxLength': 500},
+                       'intent': {'type': 'string', 'minLength': 1, 'maxLength': 240}},
+                       'required': ['thoughtSummary', 'intent'], 'additionalProperties': False}}
+FILE_TOOLS.append(PULSE_NOTE_TOOL)
+
+# Same current-turn capability bridge, no global health read.
+from health_requests import HEALTH_TOOLS
+FILE_TOOLS += HEALTH_TOOLS
+
+from data_access import DATA_TOOLS
+FILE_TOOLS += DATA_TOOLS
+
+from personal_ledger import TOOLS as PERSONAL_LEDGER_TOOLS
+FILE_TOOLS += PERSONAL_LEDGER_TOOLS
+
+from collar import COLLAR_TOOLS
+FILE_TOOLS += COLLAR_TOOLS
+
+from toy_control import TOY_TOOLS
+FILE_TOOLS += TOY_TOOLS
+
+from memory_outbox import MEMORY_TOOLS
+FILE_TOOLS += MEMORY_TOOLS
+
+from device_actions import DEVICE_TOOLS
+FILE_TOOLS += DEVICE_TOOLS
+
+from travel_bridge import TRAVEL_TOOLS
+FILE_TOOLS += TRAVEL_TOOLS
+
+from weather_tools import WEATHER_TOOL
+FILE_TOOLS.append(WEATHER_TOOL)
+
+from wallet_tools import WALLET_TOOLS
+FILE_TOOLS += WALLET_TOOLS

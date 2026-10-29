@@ -21,9 +21,10 @@ final class CoveUITests: XCTestCase {
             ("tab.health", "健康", "health"),
             ("tab.settings", "设置", "settings")
         ]
-        XCTAssertEqual(app.otherElements["cove.tabBar"].buttons.count, 5)
-        XCTAssertLessThanOrEqual(app.otherElements["cove.tabBar"].frame.width, 321)
-        for button in app.otherElements["cove.tabBar"].buttons.allElementsBoundByIndex {
+        XCTAssertEqual(app.tabBars.firstMatch.buttons.count, 5)
+        XCTAssertLessThanOrEqual(app.tabBars.firstMatch.frame.width, app.frame.width)
+        XCTAssertFalse(app.otherElements["cove.tabBar"].exists, "Do not render a second custom bar.")
+        for button in app.tabBars.firstMatch.buttons.allElementsBoundByIndex {
             XCTAssertGreaterThanOrEqual(button.frame.width, 44)
             XCTAssertGreaterThanOrEqual(button.frame.height, 44)
         }
@@ -31,34 +32,99 @@ final class CoveUITests: XCTestCase {
             try tapTab(identifier, label: label)
             switch identifier {
             case "tab.home":
-                XCTAssertTrue(app.staticTexts["用户与 助手"].waitForExistence(timeout: 3))
+                XCTAssertTrue(app.staticTexts["用户与 Assistant"].waitForExistence(timeout: 3))
                 XCTAssertTrue(app.staticTexts["接着说"].exists)
             case "tab.pulse":
                 XCTAssertTrue(app.staticTexts["最近一次心跳记录"].waitForExistence(timeout: 3))
+                app.segmentedControls.buttons["感受"].tap()
                 XCTAssertTrue(app.staticTexts["心里的倾向"].exists)
             case "tab.chat":
                 XCTAssertTrue(app.textFields["chat.input"].waitForExistence(timeout: 3))
                 XCTAssertTrue(app.textFields["chat.input"].isHittable)
                 XCTAssertLessThan(app.textFields["chat.input"].frame.maxY,
-                                  app.otherElements["cove.tabBar"].frame.minY)
-                XCTAssertFalse(app.buttons["chat.send"].isEnabled, "Preview must never send a real message.")
+                                  app.tabBars.firstMatch.frame.minY)
+                let send = app.buttons["chat.send"]
+                XCTAssertFalse(send.exists && send.isEnabled, "Preview must never expose an enabled real-message send action.")
             case "tab.health":
                 XCTAssertTrue(app.staticTexts["Apple 健康"].waitForExistence(timeout: 3))
-                XCTAssertTrue(app.staticTexts["助手 已读取"].exists)
-                XCTAssertTrue(app.staticTexts["尚未读取"].exists, "Sync must not claim the model read the snapshot.")
+                XCTAssertTrue(app.staticTexts["health.storageExplanation"].exists)
+                XCTAssertFalse(app.staticTexts["留在本机的健康记录"].exists)
             default:
                 XCTAssertTrue(app.textFields["settings.url"].waitForExistence(timeout: 3))
                 XCTAssertTrue(app.secureTextFields["settings.token"].exists)
                 XCTAssertFalse(app.buttons["settings.connect"].isEnabled)
             }
             attachScreenshot(filename)
-            XCTAssertFalse(app.tabBars.firstMatch.isHittable, "The custom bar must be the only visible tab bar.")
+            XCTAssertTrue(app.tabBars.firstMatch.isHittable, "The system tab bar must own navigation.")
         }
         attachHierarchy("five-tabs-hierarchy")
     }
 
+    func testBluetoothConnectionPageNeverScansInPreview() throws {
+        try tapTab("tab.settings", label: "设置")
+        let link = app.buttons["settings.bluetooth"]
+        for _ in 0..<6 where !link.isHittable { app.swipeUp() }
+        XCTAssertTrue(link.isHittable)
+        link.tap()
+        XCTAssertTrue(app.staticTexts["bluetooth.status"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["bluetooth.status"].label, "示例预览，不使用真实蓝牙")
+        XCTAssertTrue(app.buttons["toy.scan"].exists)
+        XCTAssertFalse(app.buttons["toy.scan"].isEnabled)
+        XCTAssertFalse(app.buttons["toy.grant"].exists)
+        XCTAssertFalse(app.buttons["bluetooth.disconnect"].exists)
+        XCTAssertEqual(app.tabBars.firstMatch.buttons.count, 5)
+        attachScreenshot("bluetooth-connection-only-preview")
+    }
+
+    func testNativeGlassNavigationInLightAndDark() throws {
+        for appearance in ["light", "dark"] {
+            app.terminate()
+            app.launchArguments = ["--preview", "-cove.appearance", appearance]
+            app.launch()
+            let input = app.textFields["chat.input"]
+            XCTAssertTrue(input.waitForExistence(timeout: 10))
+            let tabBar = app.tabBars.firstMatch
+            XCTAssertTrue(tabBar.waitForExistence(timeout: 5))
+            XCTAssertEqual(tabBar.buttons.count, 5)
+            XCTAssertTrue(tabBar.buttons["对话"].isSelected)
+            XCTAssertFalse(app.otherElements["cove.tabBar"].exists)
+            XCTAssertLessThan(input.frame.maxY, tabBar.frame.minY)
+            for identifier in ["chat.search", "chat.terminal", "chat.conversations"] {
+                XCTAssertTrue(app.buttons[identifier].isHittable)
+            }
+            attachScreenshot("ios27-native-chat-\(appearance)")
+            try tapTab("tab.settings", label: "设置")
+            XCTAssertTrue(app.textFields["settings.url"].waitForExistence(timeout: 3))
+            attachScreenshot("ios27-native-settings-\(appearance)")
+        }
+    }
+
+    func testPulseDashboardLocalFixture() throws {
+        app.terminate()
+        app.launchArguments = ["--preview", "--pulse-qa", "--tab", "1"]
+        app.launch()
+        XCTAssertTrue(app.staticTexts["数字身体模型"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["已记录的模型采样"].exists)
+        XCTAssertTrue(app.staticTexts["72"].exists)
+        attachScreenshot("pulse-v3-current")
+
+        app.buttons["醒来记录"].tap()
+        XCTAssertTrue(app.staticTexts["性欲推动了主动靠近"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["性欲把我叫醒了，想主动靠近你。"].exists)
+        XCTAssertTrue(app.staticTexts["安静完成"].exists)
+        XCTAssertFalse(app.staticTexts["libido_crossed_threshold"].exists)
+        XCTAssertFalse(app.staticTexts["quiet"].exists)
+        attachScreenshot("pulse-v3-wakes")
+
+        app.buttons["感受"].tap()
+        XCTAssertTrue(app.staticTexts["心里的倾向"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["环境"].exists)
+        XCTAssertTrue(app.staticTexts["雨声让整个海湾安静下来。"].exists)
+        attachScreenshot("pulse-v3-feelings")
+    }
+
     func testQuoteReplyComposerAndKeyboard() throws {
-        let message = app.staticTexts["先看看设置页面。"]
+        let message = app.staticTexts["就叫 Cove 吧。"]
         XCTAssertTrue(message.waitForExistence(timeout: 5))
         // The selectable Markdown text has its own Copy/Share menu. Press the
         // bubble's visible padding to exercise the message actions explicitly.
@@ -86,7 +152,7 @@ final class CoveUITests: XCTestCase {
         }
         XCTAssertEqual(input.value as? String, "引用预览测试")
         XCTAssertFalse(app.buttons["chat.send"].isEnabled, "Typing in preview must not enable network sending.")
-        XCTAssertFalse(app.otherElements["cove.tabBar"].isHittable, "The keyboard should hide the tab bar.")
+        XCTAssertFalse(app.tabBars.firstMatch.isHittable, "The keyboard should hide the tab bar.")
         attachScreenshot("quote-keyboard")
 
         let history = app.scrollViews["chat.history"]
@@ -96,8 +162,8 @@ final class CoveUITests: XCTestCase {
         let keyboardGone = NSPredicate(format: "exists == false")
         expectation(for: keyboardGone, evaluatedWith: app.keyboards.firstMatch)
         waitForExpectations(timeout: 4)
-        XCTAssertTrue(app.otherElements["cove.tabBar"].waitForExistence(timeout: 4))
-        XCTAssertTrue(app.otherElements["cove.tabBar"].isHittable)
+        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 4))
+        XCTAssertTrue(app.tabBars.firstMatch.isHittable)
         app.buttons["取消引用"].tap()
         XCTAssertFalse(app.staticTexts["回复 用户"].exists)
         XCTAssertEqual(input.value as? String, "引用预览测试", "Cancelling the quote must preserve the draft.")
@@ -129,7 +195,7 @@ final class CoveUITests: XCTestCase {
         XCTAssertTrue(latest.waitForExistence(timeout: 10))
         waitForLatestAboveComposer(latest, timestamp: timestamp, input: input)
         XCTAssertTrue(input.isHittable)
-        XCTAssertLessThan(input.frame.maxY, app.otherElements["cove.tabBar"].frame.minY)
+        XCTAssertLessThan(input.frame.maxY, app.tabBars.firstMatch.frame.minY)
         let originalLabel = latest.label
         XCTAssertTrue(originalLabel.contains("This is rich history. Cove reference."))
         XCTAssertGreaterThan(latest.frame.height, input.frame.height,
@@ -144,7 +210,7 @@ final class CoveUITests: XCTestCase {
         XCTAssertLessThan(latest.frame.maxY, originalBottom - 80,
                           "The newest multiline message must actually move upward with the keyboard.")
         XCTAssertLessThanOrEqual(input.frame.maxY, app.keyboards.firstMatch.frame.minY)
-        XCTAssertFalse(app.otherElements["cove.tabBar"].isHittable)
+        XCTAssertFalse(app.tabBars.firstMatch.isHittable)
         let keyboardBottom = latest.frame.maxY
         attachScreenshot("latest-above-keyboard")
 
@@ -157,10 +223,87 @@ final class CoveUITests: XCTestCase {
         XCTAssertEqual(latest.label, originalLabel)
         XCTAssertGreaterThan(latest.frame.maxY, keyboardBottom + 80,
                              "Closing the keyboard must return the latest message to the expanded viewport's bottom.")
-        XCTAssertTrue(app.otherElements["cove.tabBar"].isHittable)
+        XCTAssertTrue(app.tabBars.firstMatch.isHittable)
         XCTAssertFalse(app.buttons["chat.jumpToLatest"].exists && app.buttons["chat.jumpToLatest"].isHittable)
         attachScreenshot("latest-after-keyboard")
         attachHierarchy("latest-keyboard-hierarchy")
+    }
+
+    func testLatestMessageFollowsKeyboardAfterManualScrollRoundTrip() throws {
+        app.terminate()
+        app.launchArguments = ["--preview", "--stress-markdown"]
+        app.launch()
+        let history = app.scrollViews["chat.history"]
+        let latest = app.otherElements["chat.bubble.stress-599"].staticTexts
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "历史示例 600")).firstMatch
+        let timestamp = app.staticTexts["chat.timestamp.stress-599"]
+        let input = app.textFields["chat.input"]
+        XCTAssertTrue(history.waitForExistence(timeout: 10))
+        XCTAssertTrue(latest.waitForExistence(timeout: 10))
+        waitForLatestAboveComposer(latest, timestamp: timestamp, input: input)
+
+        history.swipeDown(velocity: .slow)
+        history.swipeDown(velocity: .slow)
+        XCTAssertFalse(latest.exists && latest.isHittable)
+        for _ in 0..<12 {
+            if latest.exists && latest.isHittable { break }
+            history.swipeUp(velocity: .fast)
+        }
+        XCTAssertTrue(latest.waitForExistence(timeout: 8))
+        history.swipeUp(velocity: .fast)
+        waitForLatestAboveComposer(latest, timestamp: timestamp, input: input)
+
+        for cycle in 1...2 {
+            let bottomBeforeKeyboard = latest.frame.maxY
+            input.tap()
+            XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 4))
+            waitForLatestAboveComposer(latest, timestamp: timestamp, input: input)
+            XCTAssertLessThan(latest.frame.maxY, bottomBeforeKeyboard - 80,
+                              "Keyboard cycle \(cycle) must move the latest message upward by more than 80 points.")
+
+            history.coordinate(withNormalizedOffset: CGVector(dx: 0.005, dy: 0.3)).tap()
+            expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: app.keyboards.firstMatch)
+            waitForExpectations(timeout: 5)
+            waitForLatestAboveComposer(latest, timestamp: timestamp, input: input)
+        }
+    }
+
+    func testJumpToLatestAppearsOnlyAfterMeaningfulHistoryScroll() {
+        app.terminate()
+        app.launchArguments = ["--preview", "--stress-markdown"]
+        app.launch()
+        let history = app.scrollViews["chat.history"]
+        let jump = app.buttons["chat.jumpToLatest"]
+        let latest = app.otherElements["chat.bubble.stress-599"].staticTexts
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "历史示例 600")).firstMatch
+        let timestamp = app.staticTexts["chat.timestamp.stress-599"]
+        let input = app.textFields["chat.input"]
+        XCTAssertTrue(history.waitForExistence(timeout: 10))
+        XCTAssertTrue(latest.waitForExistence(timeout: 10))
+        waitForLatestAboveComposer(latest, timestamp: timestamp, input: input)
+        XCTAssertFalse(jump.exists)
+
+        let start = history.coordinate(withNormalizedOffset: CGVector(dx: 0.015, dy: 0.45))
+        start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: 65)),
+                    withVelocity: .slow, thenHoldForDuration: 0.3)
+        XCTAssertFalse(jump.exists, "A small nudge must not reveal an obstructing overlay.")
+        history.swipeDown(velocity: .slow)
+        history.swipeDown(velocity: .slow)
+        XCTAssertTrue(jump.waitForExistence(timeout: 4))
+        XCTAssertTrue(jump.isHittable)
+        XCTAssertGreaterThanOrEqual(jump.frame.width, 44)
+        XCTAssertGreaterThanOrEqual(jump.frame.height, 44)
+        XCTAssertLessThan(jump.frame.maxY, input.frame.minY)
+        attachScreenshot("jump-to-latest-visible-0916")
+        jump.tap()
+        waitForLatestAboveComposer(latest, timestamp: timestamp, input: input)
+        XCTAssertTrue(jump.waitForNonExistence(timeout: 4))
+        attachScreenshot("jump-to-latest-hidden-0916")
+
+        input.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 4))
+        waitForLatestAboveComposer(latest, timestamp: timestamp, input: input)
+        XCTAssertFalse(jump.exists, "Returning to latest must restore keyboard following without a stray arrow.")
     }
 
     private func waitForLatestAboveComposer(_ latest: XCUIElement, timestamp: XCUIElement, input: XCUIElement) {
@@ -217,7 +360,8 @@ final class CoveUITests: XCTestCase {
         history.swipeDown(velocity: .slow)
         XCTAssertFalse(newest.exists && newest.isHittable, "Scrolling toward old history must move away from the newest message.")
         let returnToLatest = app.buttons["chat.jumpToLatest"]
-        XCTAssertFalse(returnToLatest.exists, "The removed latest-message overlay must stay absent while reading history.")
+        XCTAssertTrue(returnToLatest.waitForExistence(timeout: 4))
+        XCTAssertTrue(returnToLatest.isHittable)
         attachScreenshot("\(screenshotPrefix)-reading-history")
 
         let input = app.textFields["chat.input"]
@@ -225,23 +369,21 @@ final class CoveUITests: XCTestCase {
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 4))
         XCTAssertTrue(input.isHittable)
         XCTAssertTrue(navigation.isHittable, "The keyboard must preserve navigation access.")
-        XCTAssertFalse(app.otherElements["cove.tabBar"].isHittable)
+        XCTAssertFalse(app.tabBars.firstMatch.isHittable)
         attachScreenshot("\(screenshotPrefix)-history-keyboard")
         history.swipeDown(velocity: .slow)
         if app.keyboards.firstMatch.exists { history.swipeDown(velocity: .slow) }
         expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: app.keyboards.firstMatch)
         waitForExpectations(timeout: 4)
         XCTAssertFalse(newest.exists && newest.isHittable, "Dismissing the keyboard must preserve the older-history position.")
-        for _ in 0..<12 {
-            if newest.exists && newest.isHittable { break }
-            history.swipeUp(velocity: .fast)
-        }
+        XCTAssertTrue(returnToLatest.isHittable)
+        returnToLatest.tap()
         XCTAssertTrue(newest.waitForExistence(timeout: 8))
         expectation(for: NSPredicate(format: "hittable == true"), evaluatedWith: newest)
         waitForExpectations(timeout: 8)
         XCTAssertLessThan(newest.frame.maxY, input.frame.minY, "Returning to latest must reveal the entire newest paragraph above the composer.")
         XCTAssertFalse(returnToLatest.exists && returnToLatest.isHittable)
-        XCTAssertTrue(app.otherElements["cove.tabBar"].isHittable)
+        XCTAssertTrue(app.tabBars.firstMatch.isHittable)
         attachScreenshot("\(screenshotPrefix)-returned-latest")
         attachHierarchy("\(screenshotPrefix)-hierarchy")
     }
@@ -303,8 +445,8 @@ final class CoveUITests: XCTestCase {
     private func tapTab(_ identifier: String, label: String) throws {
         // Native tab bars may expose SwiftUI labels instead of their identifiers.
         // Query only the actual tab-bar subtree and inspect its emitted hierarchy.
-        let identified = app.otherElements["cove.tabBar"].buttons[identifier]
-        let tab = identified.exists ? identified : app.otherElements["cove.tabBar"].buttons[label]
+        let identified = app.tabBars.firstMatch.buttons[identifier]
+        let tab = identified.exists ? identified : app.tabBars.firstMatch.buttons[label]
         guard tab.waitForExistence(timeout: 3) else {
             attachHierarchy("missing-\(identifier)")
             XCTFail("Missing native tab \(label)")
@@ -312,9 +454,8 @@ final class CoveUITests: XCTestCase {
         }
         expectation(for: NSPredicate(format: "hittable == true"), evaluatedWith: tab)
         waitForExpectations(timeout: 3)
-        // A real finger stays down longer than XCUI's default tap. iOS 26's
-        // native tab-selection animation must commit before inspecting content.
-        tab.press(forDuration: 0.1)
+        // Exercise the system tab item, not a custom replacement button.
+        tab.tap()
         expectation(for: NSPredicate(format: "selected == true"), evaluatedWith: tab)
         waitForExpectations(timeout: 3)
         XCTAssertTrue(tab.isSelected, "The native tab must confirm selection before page assertions.")
