@@ -1,6 +1,6 @@
 """Small adapter for attaching generated speech through Cove's existing store."""
 import json
-from voice_provider import MiniMaxVoiceConfig, MiniMaxVoiceProvider, VoiceProviderError
+from voice_provider import selected_voice_provider, VoiceProviderError
 
 
 def synthesize_attachment(store, text, provider=None):
@@ -9,12 +9,12 @@ def synthesize_attachment(store, text, provider=None):
     Keeping message/turn authorization in the existing MCP bridge prevents this
     provider from becoming a second, weaker tool path.
     """
-    provider = provider or MiniMaxVoiceProvider(MiniMaxVoiceConfig.from_env())
+    provider = provider or selected_voice_provider()
     audio, mime = provider.synthesize(text)
     return store.add_attachment("Assistant-voice.mp3", mime, audio)
 
 
-def synthesize_once(store, key, text, provider=None):
+def synthesize_once(store, key, text, provider=None, *, voice=None):
     """Charge at most once for a tool-call key, including concurrent retries.
 
     The receipt is committed before network IO. A failed/uncertain request stays
@@ -30,7 +30,7 @@ def synthesize_once(store, key, text, provider=None):
             raise VoiceProviderError('这次语音生成已失败或结果不确定，为避免重复扣费不会自动重试')
         store.db.execute('INSERT INTO voice_tool_results(call,state) VALUES(?,?)', (key, 'running'))
     try:
-        audio, mime = (provider or MiniMaxVoiceProvider(MiniMaxVoiceConfig.from_env())).synthesize(text)
+        audio, mime = (provider or selected_voice_provider(voice)).synthesize(text)
         if not isinstance(audio, bytes) or not audio or len(audio) > 20 * 1024 * 1024 or mime != 'audio/mpeg':
             raise VoiceProviderError('语音结果为空、格式不匹配或超过 20 MiB')
     except Exception:

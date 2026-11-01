@@ -10,6 +10,7 @@ struct MarkdownMessageView: View {
     let text: String
     var id: String? = nil
     var searchQuery: String = ""
+    var allowsLocationCard = false
     var widgetContext: String? = nil
     var onWidgetSend: ((String, String) throws -> Void)? = nil
 
@@ -19,6 +20,8 @@ struct MarkdownMessageView: View {
             // matches. Clearing the located highlight restores normal GFM layout.
             Text(CoveSearchHighlight.text(text, query: searchQuery))
                 .font(.body).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+        } else if allowsLocationCard, let location = SharedLocation.parse(text) {
+            SharedLocationCard(location: location)
         } else if MarkdownPlainText.isPlain(text) {
             // Preserve Text's intrinsic height and accessibility for the common
             // history row, without MarkdownUI's block-margin preference layout.

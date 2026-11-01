@@ -178,6 +178,7 @@ final class CoveStore: ObservableObject {
     private var resettingTerminal = false
     private var pendingTerminalReset: (source: String, target: String, generation: UUID)?
     private var generation = UUID()
+    let locationSharing = LocationSharing()
     private var connectedURL: URL?
     private var connectedToken = ""
     private var cacheEndpoint = ""
@@ -322,6 +323,7 @@ final class CoveStore: ObservableObject {
     }
 
     func connect() async {
+        locationSharing.invalidate()
         guard !previewMode else { return }
         guard !flushing else { errorMessage = "当前消息发送结束后再切换连接。"; return }
         do {
@@ -429,6 +431,7 @@ final class CoveStore: ObservableObject {
     }
 
     func suspend() {
+        locationSharing.invalidate()
         generation = UUID()
         connecting = false
         deviceBridgeEpoch = UUID()
@@ -629,6 +632,34 @@ final class CoveStore: ObservableObject {
                 pulseError = "心跳更新失败：" + readable(error)
             }
         }
+    }
+
+    func configureLocationSharing() {
+        guard !previewMode, let base = connectedURL else { locationSharing.invalidate(); return }
+        let stamp = generation
+        locationSharing.bind(identity: base.absoluteString + ":" + connectedToken) { [weak self] action, data in
+            guard let self, self.generation == stamp, !self.previewMode else { throw CancellationError() }
+            let body = try data.map { try JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? nil
+            return try await self.request("v1/location/" + action, method: data == nil ? "GET" : "POST", body: body)
+        }
+    }
+
+    func runLocationSharing() async {
+        defer { locationSharing.invalidate() }
+        while !Task.isCancelled && UIApplication.shared.applicationState != .background {
+            if !previewMode, connectedURL != nil {
+                configureLocationSharing()
+                await locationSharing.refresh()
+            }
+            do { try await Task.sleep(for: .seconds(5)) } catch { break }
+        }
+    }
+
+    func sendLocation(_ location: SharedLocation, conversation: String) throws {
+        guard !previewMode, connectedURL != nil, !isSwitchingSession, activeConversationID == conversation,
+              location.valid, !location.message.isEmpty else { throw CoveError.message("位置或对话已变化，请重新打开位置面板。") }
+        if activeConversationID.isEmpty { createLocalConversation() }
+        try enqueueChatText(location.message, id: UUID().uuidString, replyTo: nil, consumeDraft: false)
     }
 
     func send() {
@@ -1246,30 +1277,33 @@ final class CoveStore: ObservableObject {
             applyHealthDataAccess(result.enabled)
         } catch {
             guard stamp == generation, revision == healthAccessRevision, !previewMode else { return }
-            healthDataAccessKnown = false
+            if healthDataAccessKnown { healthDataAccessKnown = false }
             healthReader.stopObserving()
-            healthDataAccessStatus = "持续授权状态未能刷新：\(readable(error))"
+            let message = "持续授权状态未能刷新：\(readable(error))"
+            if healthDataAccessStatus != message { healthDataAccessStatus = message }
         }
     }
 
     private func applyHealthDataAccess(_ enabled: Bool) {
-        if enabled != healthSharingEnabled { healthAccessRevision = UUID() }
-        healthSharingEnabled = enabled
-        healthDataAccessKnown = true
+        if enabled != healthSharingEnabled {
+            healthAccessRevision = UUID()
+            healthSharingEnabled = enabled
+        }
+        if !healthDataAccessKnown { healthDataAccessKnown = true }
         if !enabled { healthReader.stopObserving(); healthChangeTask?.cancel() }
-        healthDataAccessStatus = enabled
-            ? "已持续授权 Assistant 读取；跨对话有效，不再逐次询问。"
-            : "持续读取已关闭；仍可单独回应对话里的健康请求。"
+        let accessStatus = enabled && healthUploadsPaused
+            ? "服务器仍显示已授权，本机上传已暂停。上次关闭未确认，请重试关闭。"
+            : enabled ? "已持续授权 Assistant 读取；跨对话有效，不再逐次询问。"
+                : "持续读取已关闭；仍可单独回应对话里的健康请求。"
+        if healthDataAccessStatus != accessStatus { healthDataAccessStatus = accessStatus }
         if !enabled {
             personalLedgerSyncTask?.cancel()
             personalLedgerSyncedSnapshot = nil
             personalLedgerVerifiedAt = nil
-            personalLedgerSyncStatus = "账本同步已关闭 · 本机记录保留" + personalLedgerLastSyncLabel
+            let ledgerStatus = "账本同步已关闭 · 本机记录保留" + personalLedgerLastSyncLabel
+            if personalLedgerSyncStatus != ledgerStatus { personalLedgerSyncStatus = ledgerStatus }
         } else {
             schedulePersonalLedgerSync()
-        }
-        if enabled && healthUploadsPaused {
-            healthDataAccessStatus = "服务器仍显示已授权，本机上传已暂停。上次关闭未确认，请重试关闭。"
         }
     }
 
@@ -1874,10 +1908,11 @@ final class CoveStore: ObservableObject {
         do {
             let result: HealthRequestsEnvelope = try await request("v1/conversations/\(conversationID)/health-requests")
             guard stamp == generation, conversationID == activeConversationID, !previewMode else { return }
-            healthRequests = result.requests.filter { $0.conversationID == conversationID }
+            let nextRequests = result.requests.filter { $0.conversationID == conversationID }
+            if healthRequests != nextRequests { healthRequests = nextRequests }
             // GET status cannot identify the accepted snapshot: another device
             // may have answered this request. Unknown local attempts stay unknown.
-            healthRequestsStatus = ""
+            if !healthRequestsStatus.isEmpty { healthRequestsStatus = "" }
             if automaticallyRespond, healthSharingEnabled, healthDataAccessKnown,
                let pending = healthRequests.reversed().first(where: {
                    $0.canRespond(conversationID: conversationID)
@@ -1888,7 +1923,8 @@ final class CoveStore: ObservableObject {
             }
         } catch {
             guard stamp == generation, conversationID == activeConversationID else { return }
-            healthRequestsStatus = "健康请求暂不可用；服务可能尚未升级或连接中断。"
+            let message = "健康请求暂不可用；服务可能尚未升级或连接中断。"
+            if healthRequestsStatus != message { healthRequestsStatus = message }
         }
     }
 
@@ -2855,7 +2891,8 @@ extension CoveStore {
             }
             let envelope: CoveDeviceRequestsEnvelope = try await request("v1/conversations/\(conversation)/device-actions", query: [.init(name: "deviceID", value: bridgeDeviceID)])
             guard deviceBridgeAllowed(stamp: stamp, epoch: epoch, conversation: conversation) else { return }
-            deviceRequests = envelope.requests.filter { $0.conversationID == conversation && $0.deviceID == bridgeDeviceID && UUID(uuidString: $0.id) == $0.action.id }
+            let nextRequests = envelope.requests.filter { $0.conversationID == conversation && $0.deviceID == bridgeDeviceID && UUID(uuidString: $0.id) == $0.action.id }
+            if deviceRequests != nextRequests { deviceRequests = nextRequests }
             await refreshHealthDataAccess()
             guard deviceBridgeAllowed(stamp: stamp, epoch: epoch, conversation: conversation) else { return }
             // Fetch authoritative states first: the server may already have committed a lost ACK.

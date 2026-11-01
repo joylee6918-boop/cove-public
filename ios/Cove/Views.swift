@@ -807,6 +807,8 @@ private struct ChatView: View {
     @State private var photoDraftGeneration: UUID?
     @State private var pendingFileImporter = false
     @State private var showingFileImporter = false
+    @State private var showingLocation = false
+    @State private var locationConversation = ""
     @State private var showingStickers = false
     @State private var uploadCount = 0
     @State private var isUploading = false
@@ -894,6 +896,9 @@ private struct ChatView: View {
                 .id("\(store.appActivityScopeID)|\(store.activeConversationID)")
         }
         .sheet(isPresented: $showingSearch) { MessageSearchSheet() }
+        .sheet(isPresented: $showingLocation) {
+            LocationPickerSheet { location in try store.sendLocation(location, conversation: locationConversation) }
+        }
         .sheet(isPresented: $showingRealtime) { CoveRealtimeView() }
         .sheet(isPresented: $showingVoice) {
             NavigationStack {
@@ -1001,7 +1006,8 @@ private struct ChatView: View {
           VStack(spacing: 0) {
             CoveTravelEntry(compact: true).padding(.horizontal, 16)
             ScrollView {
-                ChatHistoryRows(messages: store.messages, visibleRange: range,
+                ChatHistoryRows(store: store, messageHighlight: store.messageHighlight, serverIdentity: store.serverURL,
+                                messages: store.messages, visibleRange: range,
                                 isConnected: store.isConnected, reactingMessageIDs: store.reactingMessageIDs,
                                 healthRequests: store.previewMode || !includesLatest ? [] : store.healthRequests.filter { $0.conversationID == store.activeConversationID },
                                 deviceRequests: store.previewMode || !includesLatest ? [] : store.deviceRequests.filter { $0.conversationID == store.activeConversationID },
@@ -1421,6 +1427,13 @@ private struct ChatView: View {
                     } label: {
                         Label("文件", systemImage: "doc")
                     }.accessibilityIdentifier("chat.attachments.files")
+                    Button {
+                        composerFocused = false
+                        locationConversation = store.activeConversationID
+                        showingLocation = true
+                    } label: { Label("位置", systemImage: "location") }
+                        .disabled(store.previewMode)
+                        .accessibilityIdentifier("chat.attachments.location")
                 } label: {
                     if isUploading { ProgressView().frame(width: 44, height: 44) }
                     else { Image(systemName: "paperclip").font(.title3).frame(width: 44, height: 44) }
@@ -1509,6 +1522,10 @@ private struct ChatView: View {
 }
 
 private struct ChatHistoryRows: View, Equatable {
+    // Actions use the store without subscribing every bubble to all its publications.
+    let store: CoveStore
+    let messageHighlight: CoveMessageHighlight?
+    let serverIdentity: String
     let messages: [ChatMessage]
     let visibleRange: Range<Int>
     let isConnected: Bool
@@ -1524,7 +1541,9 @@ private struct ChatHistoryRows: View, Equatable {
     var onLike: (ChatMessage, Bool) -> Void
 
     static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.messages == rhs.messages && lhs.visibleRange == rhs.visibleRange && lhs.isConnected == rhs.isConnected
+        lhs.store === rhs.store && lhs.messageHighlight == rhs.messageHighlight
+            && lhs.serverIdentity == rhs.serverIdentity
+            && lhs.messages == rhs.messages && lhs.visibleRange == rhs.visibleRange && lhs.isConnected == rhs.isConnected
             && lhs.reactingMessageIDs == rhs.reactingMessageIDs
             && lhs.healthRequests == rhs.healthRequests
             && lhs.deviceRequests == rhs.deviceRequests
@@ -1563,7 +1582,7 @@ private struct ChatHistoryRows: View, Equatable {
                         .background(CoveStyle.dateBackground, in: Capsule())
                         .frame(maxWidth: .infinity).padding(.vertical, 10)
                 }
-                ChatBubble(message: message,
+                ChatBubble(store: store, messageHighlight: messageHighlight, message: message,
                            quote: CoveChatPresentation.displayedQuote(message, messagesByID: byID),
                            showName: firstInGroup, isLastInGroup: lastInGroup,
                            arrivalOrigin: outgoingArrival?.id == message.id ? outgoingArrival?.origin : nil,
@@ -1771,7 +1790,8 @@ private struct CoveLittleThoughtsChip: View {
 }
 
 private struct ChatBubble: View {
-    @EnvironmentObject private var store: CoveStore
+    let store: CoveStore
+    let messageHighlight: CoveMessageHighlight?
     @State private var savingSticker: ChatAttachment?
     @Environment(\.colorScheme) private var colorScheme
     let message: ChatMessage
@@ -1785,9 +1805,9 @@ private struct ChatBubble: View {
     var onLike: (ChatMessage, Bool) -> Void
     private var own: Bool { message.role == "user" }
     private var isSearchTarget: Bool {
-        store.messageHighlight?.conversationID == message.conversationID && store.messageHighlight?.messageID == message.id
+        messageHighlight?.conversationID == message.conversationID && messageHighlight?.messageID == message.id
     }
-    private var searchQuery: String { isSearchTarget ? (store.messageHighlight?.query ?? "") : "" }
+    private var searchQuery: String { isSearchTarget ? (messageHighlight?.query ?? "") : "" }
     private var stickerOnly: Bool { message.stickerID != nil && message.text.isEmpty && quote == nil }
     private var saveableImages: [ChatAttachment] {
         (message.attachments ?? []).filter { ["image/png", "image/jpeg", "image/gif", "image/webp"].contains($0.mime.lowercased()) }
@@ -1826,7 +1846,7 @@ private struct ChatBubble: View {
                             CoveAttachmentView(attachment: ChatAttachment(id: message.id + "-legacy", filename: "图片.jpg", mime: "image/jpeg", size: 0, url: path))
                         }
                         if !message.text.isEmpty {
-                            MarkdownMessageView(text: message.text, id: message.id, searchQuery: searchQuery,
+                            MarkdownMessageView(text: message.text, id: message.id, searchQuery: searchQuery, allowsLocationCard: message.role == "user",
                                                 widgetContext: message.role == "assistant" && message.status == "complete"
                                                     ? CoveWidgetMarkdownIndex.digest(store.serverURL + ":" + message.conversationID + ":" + message.id) : nil,
                                                 onWidgetSend: { text, key in try store.sendWidget(text, source: message, widgetKey: key) })
@@ -2080,6 +2100,13 @@ private struct SettingsView: View {
                 NavigationLink("聊天壁纸") { CoveWallpaperSettingsView() }
                     .accessibilityIdentifier("settings.wallpaper")
             }
+            Section("位置共享") {
+                NavigationLink {
+                    LocationShareSettings(sharing: store.locationSharing, companion: "Assistant")
+                        .task { store.configureLocationSharing(); await store.locationSharing.refresh() }
+                } label: { Label("持续位置授权", systemImage: "location") }
+                    .disabled(store.previewMode)
+            }
             Section("附近设备") {
                 NavigationLink { CoveBluetoothView() } label: {
                     Label("啵啵贝连接", systemImage: "antenna.radiowaves.left.and.right")
@@ -2204,7 +2231,7 @@ private struct SettingsView: View {
             Section {
                 Text("对话由你自己的服务保存。健康可逐次分享，也可由你开启跨对话的持续读取；持续授权同时涵盖已接入的生活数据与账本代记，不包含银行付款。关闭授权不会自动删除已有副本。")
                     .font(.footnote).foregroundStyle(CoveStyle.secondaryText)
-                LabeledContent("版本", value: "0.1.0 · 公开源码更新 2026-10-29")
+                LabeledContent("版本", value: "0.1.0 · 公开源码更新 2026-11-01")
                 if !store.previewMode { Button("查看示例预览") { store.enablePreview() } }
             } header: { Text("数据与关于") } footer: { Text("示例预览使用明确标注的样例，不会发送消息或上传健康数据。") }
         }

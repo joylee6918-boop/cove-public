@@ -140,8 +140,8 @@ STICKER_SAVE_TOOL = {'name': 'cove_save_sticker', 'description': 'Save an image 
 STICKER_SEND_TOOL = {'name': 'cove_send_sticker', 'description': 'Send a saved sticker from your own Cove sticker library as an image attachment in the current reply. Obtain stickerID from cove_list_stickers or cove_save_sticker. Exact original bytes, including GIF animation, are reused. No model turn or external message is started; this attaches only to the current active reply.',
                      'inputSchema': {'type': 'object', 'properties': {'stickerID': {'type': 'string'}}, 'required': ['stickerID'], 'additionalProperties': False}}
 STICKER_TOOLS = [STICKER_LIST_TOOL, STICKER_SAVE_TOOL, STICKER_SEND_TOOL]
-VOICE_SEND_TOOL = {'name': 'cove_send_voice', 'description': 'Generate one spoken MP3 from short reply text using the owner-configured MiniMax voice and attach it to this same active Cove reply. This is a paid, explicitly configured server action: use only when a voice reply is genuinely intended. It never accepts an API key or voice id, never clones a voice, and never starts another message or call.',
-                   'inputSchema': {'type': 'object', 'properties': {'text': {'type': 'string', 'minLength': 1, 'maxLength': 2000}}, 'required': ['text'], 'additionalProperties': False}}
+VOICE_SEND_TOOL = {'name': 'cove_send_voice', 'description': 'Generate one spoken MP3 and attach it to this same active Cove reply. Uses the operator-configured provider and voice. Optional voice=elevenlabs or minimax; omission uses COVE_VOICE_DEFAULT (minimax unless configured). No voice identity or private delivery profile is bundled; text contains only the spoken words. Paid action: use only when a voice reply is intended. Never retry an unknown result with a new call, changed text or voice; no automatic provider fallback. No API key or voice ID input, cloning, or new message/call.',
+                   'inputSchema': {'type': 'object', 'properties': {'text': {'type': 'string', 'minLength': 1, 'maxLength': 2000}, 'voice': {'type': 'string', 'enum': ['elevenlabs', 'minimax'], 'description': 'Omit for host default; each provider requires its own operator-supplied configuration.'}}, 'required': ['text'], 'additionalProperties': False}}
 VOICE_TOOLS = [VOICE_SEND_TOOL]
 FILE_TOOLS = [CREATE_TOOL, SEND_TOOL] + STICKER_TOOLS + VOICE_TOOLS
 
@@ -155,6 +155,9 @@ FILE_TOOLS.append(PULSE_NOTE_TOOL)
 # Same current-turn capability bridge, no global health read.
 from health_requests import HEALTH_TOOLS
 FILE_TOOLS += HEALTH_TOOLS
+
+from location_share import tools as location_tools
+FILE_TOOLS += location_tools('cove')
 
 from data_access import DATA_TOOLS
 FILE_TOOLS += DATA_TOOLS

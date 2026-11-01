@@ -72,7 +72,10 @@ class Application:
         self.store, self.token, self.runtime = store, token, runtime
         self.travel = TravelBridge(store)
         self.wallet = Wallet(store.directory)
+        from cove_location import CoveLocation
+        self.location = CoveLocation(store)
         if runtime is not None:
+            runtime.location = self.location
             runtime.app_events = self.app_events
             runtime.travel = self.travel
             runtime.wallet = self.wallet
@@ -87,6 +90,13 @@ class Application:
 
     def _work(self):
         while not self.stop.is_set():
+            self.location.drain()
+            for request, scope in self.location.data.pending_notifications():
+                if self.push:
+                    try:
+                        self.push(scope['conversationID'], {'locationRequest': True}, self.store.notification_devices())
+                    except Exception:
+                        pass  # notification is a hint; foreground polling is authoritative
             # Claim + active publication is atomic relative to interruption of queued turns.
             with self.active_lock:
                 if self.runtime and getattr(self.runtime, 'realtime_requires_reconnect', lambda: False)():
@@ -329,6 +339,7 @@ class Application:
             raise RuntimeError('Cove worker 尚未退出，未关闭仍可能被使用的存储')
         self.app_events.close()
         self.wallet.close()
+        self.location.data.close()
 
     def handler(self):
         app = self
@@ -538,6 +549,12 @@ class Application:
                         return app.store.collar_permissions(conversation, configured)
                     if method == 'POST':
                         return app.store.set_collar_permissions(conversation, self.body(), configured)
+                if path.startswith('/v1/location/'):
+                    if url.query:
+                        raise APIError(400, '位置接口不接受查询参数')
+                    result = app.location.route(path[len('/v1/location/'):], method, self.body(8192) if method == 'POST' else None)
+                    app.wake.set()
+                    return result
                 if method == 'POST' and path == '/v1/device-actions/device':
                     return app.store.register_device_actions(self.body(4096))
                 if len(parts) >= 4 and parts[:2] == ['v1', 'conversations'] and parts[3] == 'device-actions':

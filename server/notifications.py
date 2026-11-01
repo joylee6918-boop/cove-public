@@ -33,6 +33,9 @@ def notification_payload(conversation, message, preview_mode='generic'):
             body = 'Assistant 发来图片' if images_only else 'Assistant 发来文件'
         elif message.get('attachmentURL'):
             body = 'Assistant 发来文件'
+    if isinstance(message, dict) and message.get('locationRequest') is True:
+        return {'aps': {'alert': {'title': 'Cove', 'body': 'Assistant 想看看你的位置，打开 Cove 即可自动分享'}, 'sound': 'default'},
+                'conversationID': conversation, 'locationRequest': True}
     return {'aps': {'alert': {'title': 'Cove', 'body': body}, 'sound': 'default'},
             'conversationID': conversation, 'messageID': message_id}
 

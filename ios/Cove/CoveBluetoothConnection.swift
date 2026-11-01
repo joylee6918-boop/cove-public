@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import CoreBluetooth
+import OSLog
 
 enum CoveToyKind: String, Codable, Equatable {
     case bobobei
@@ -38,6 +39,7 @@ enum CoveBluetoothEvent {
     case scanning
     case unavailable(String)
     case found(CoveNearbyDevice)
+    case restoring(CoveNearbyDevice)
     case connected(UUID)
     case controlReady(UUID)
     case controlUnavailable(UUID, String)
@@ -50,12 +52,17 @@ enum CoveBluetoothEvent {
 @MainActor
 protocol CoveBluetoothTransport: AnyObject {
     var onEvent: ((CoveBluetoothEvent) -> Void)? { get set }
+    func restoreIfNeeded()
     func scan()
     func stopScan()
     func connect(_ id: UUID)
     func reconnect()
     func disconnect()
     func write(_ data: Data)
+}
+
+extension CoveBluetoothTransport {
+    func restoreIfNeeded() {} // Test transports and fresh installs never touch the radio.
 }
 
 @MainActor
@@ -92,6 +99,7 @@ final class CoveBluetoothConnection: ObservableObject {
         self.scanDuration = scanDuration
         self.connectionDuration = connectionDuration
         self.transport.onEvent = { [weak self] in self?.receive($0) }
+        if !previewMode { self.transport.restoreIfNeeded() }
     }
 
     var canScan: Bool {
@@ -165,21 +173,17 @@ final class CoveBluetoothConnection: ObservableObject {
             status = reason
             transport.disconnect()
         } else {
+            transport.disconnect()
             phase = .idle
             status = "连接会话已结束"
         }
     }
 
     func enteredBackground() {
-        guard hasSession || !devices.isEmpty else { return }
-        if controlReady {
-            Task { [weak self] in
-                try? await self?.stopToy()
-                self?.endSession(reason: "Cove 已进入后台，已全停并请求断开蓝牙连接")
-            }
-        } else {
-            endSession(reason: "Cove 已进入后台，已请求断开蓝牙连接")
-        }
+        // Keep the explicitly selected connection / pending system reconnect.
+        // Background scanning is not needed; an unselected scan still ends.
+        guard selectedID == nil else { return }
+        if hasSession || !devices.isEmpty { endSession() }
     }
 
     func setToyLevels(motion: Int, vibration: Int, rotation: Int) async throws {
@@ -229,6 +233,8 @@ final class CoveBluetoothConnection: ObservableObject {
             writeTimeout = Task { [weak self] in
                 do { try await Task.sleep(for: .seconds(5)) } catch { return }
                 guard let self, self.pendingWrite?.id == id else { return }
+                Logger(subsystem: "cove.bluetooth", category: "connection")
+                    .error("BLE write timed out after 5 seconds; requesting reconnect")
                 self.failPendingWrite("玩具写入超时")
                 self.transport.reconnect()
             }
@@ -297,6 +303,14 @@ final class CoveBluetoothConnection: ObservableObject {
             guard phase == .scanning, CoveNearbyDevice.matches(device.name) else { return }
             if let index = devices.firstIndex(where: { $0.id == device.id }) { devices[index] = device }
             else { devices.append(device) }
+        case .restoring(let device):
+            guard phase == .idle || phase == .connecting else { return }
+            selectedID = device.id
+            selectedKind = device.kind
+            devices = [device]
+            phase = .connecting
+            controlReady = false
+            status = "正在恢复已选玩具的蓝牙连接；不会重放旧动作"
         case .connected(let id):
             guard phase == .connecting, selectedID == id else { return }
             timeout?.cancel()
@@ -313,7 +327,7 @@ final class CoveBluetoothConnection: ObservableObject {
         case .writeCompleted(let error):
             advancePendingWrite(error: error)
         case .notification(let data):
-            lastNotification = data
+            if lastNotification != data { lastNotification = data }
         case .reconnecting(let id, let error):
             guard selectedID == id else { return }
             timeout?.cancel()
@@ -349,7 +363,72 @@ final class CoveCoreBluetoothTransport: NSObject, CoveBluetoothTransport, @preco
     private var writeCharacteristic: CBCharacteristic?
     private var notifyCharacteristic: CBCharacteristic?
     private var pendingCharacteristicServices = 0
-    private var reconnectTask: Task<Void, Never>?
+    private static let restoreIdentifier = "cove.bluetooth.central.v1"
+    private static let selectionKey = "cove.bluetooth.selection.v1"
+    private static let log = Logger(subsystem: "cove.bluetooth", category: "transport")
+    private let defaults: UserDefaults = .standard
+    private var savedSelection: (id: UUID, kind: CoveToyKind)? {
+        guard let value = defaults.stringArray(forKey: Self.selectionKey), value.count == 2,
+              let id = UUID(uuidString: value[0]), let kind = CoveToyKind(rawValue: value[1]) else { return nil }
+        return (id, kind)
+    }
+
+    private func makeCentral() {
+        guard central == nil else { return }
+        central = CBCentralManager(delegate: self, queue: .main, options: [
+            CBCentralManagerOptionShowPowerAlertKey: false,
+            CBCentralManagerOptionRestoreIdentifierKey: Self.restoreIdentifier,
+        ])
+    }
+
+    func restoreIfNeeded() {
+        guard let saved = savedSelection else { return }
+        wantsConnection = true
+        onEvent?(.restoring(.init(id: saved.id, name: saved.kind.displayName, signal: nil, kind: saved.kind)))
+        makeCentral()
+    }
+
+    func centralManager(_ central: CBCentralManager, willRestoreState dict: [String: Any]) {
+        let restored = dict[CBCentralManagerRestoredStatePeripheralsKey] as? [CBPeripheral] ?? []
+        guard wantsConnection, let saved = savedSelection else {
+            for device in restored { central.cancelPeripheralConnection(device) }
+            return
+        }
+        for device in restored {
+            guard device.identifier == saved.id else { central.cancelPeripheralConnection(device); continue }
+            selected = device
+            selectedKind = saved.kind
+            device.delegate = self
+        }
+        Self.log.notice("CoreBluetooth restored a previously selected connection")
+        if central.state == .poweredOn { resumeSelectedConnection(central) }
+    }
+
+    private func resumeSelectedConnection(_ central: CBCentralManager) {
+        guard wantsConnection, let saved = savedSelection else { return }
+        if selected == nil {
+            selected = central.retrievePeripherals(withIdentifiers: [saved.id]).first
+            selectedKind = saved.kind
+        }
+        guard let selected else {
+            wantsConnection = false
+            defaults.removeObject(forKey: Self.selectionKey)
+            onEvent?(.unavailable("系统已找不到上次选择的玩具，请重新查找连接。"))
+            return
+        }
+        if selected.state == .connected { prepareControlChannel(selected) }
+        else if selected.state == .disconnected { scheduleReconnect(selected) }
+        // .connecting is already a system-owned request; never duplicate it.
+    }
+
+    private func prepareControlChannel(_ peripheral: CBPeripheral) {
+        writeCharacteristic = nil
+        notifyCharacteristic = nil
+        pendingCharacteristicServices = 0
+        onEvent?(.connected(peripheral.identifier))
+        peripheral.delegate = self
+        peripheral.discoverServices(nil)
+    }
     private var writeUUID: CBUUID {
         CBUUID(string: selectedKind == .fenxin
             ? "0000ffe1-0000-1000-8000-00805f9b34fb"
@@ -367,8 +446,7 @@ final class CoveCoreBluetoothTransport: NSObject, CoveBluetoothTransport, @preco
         peripherals = [:]
         peripheralKinds = [:]
         if let central { centralManagerDidUpdateState(central) }
-        else { central = CBCentralManager(delegate: self, queue: .main,
-                                         options: [CBCentralManagerOptionShowPowerAlertKey: false]) }
+        else { makeCentral() }
     }
 
     func stopScan() {
@@ -378,13 +456,14 @@ final class CoveCoreBluetoothTransport: NSObject, CoveBluetoothTransport, @preco
 
     func connect(_ id: UUID) {
         stopScan()
-        reconnectTask?.cancel()
         guard let central, central.state == .poweredOn, let device = peripherals[id] else {
             onEvent?(.disconnected(id, "设备已不可用，请重新扫描"))
             return
         }
         selected = device
         selectedKind = peripheralKinds[id]
+        guard let selectedKind else { return }
+        defaults.set([id.uuidString, selectedKind.rawValue], forKey: Self.selectionKey)
         wantsConnection = true
         writeCharacteristic = nil
         notifyCharacteristic = nil
@@ -407,8 +486,12 @@ final class CoveCoreBluetoothTransport: NSObject, CoveBluetoothTransport, @preco
     func disconnect() {
         stopScan()
         wantsConnection = false
-        reconnectTask?.cancel()
-        guard let selected else { return }
+        let savedID = savedSelection?.id
+        defaults.removeObject(forKey: Self.selectionKey)
+        guard let selected else {
+            if let savedID { onEvent?(.disconnected(savedID, nil)) }
+            return
+        }
         if selected.state == .disconnected {
             self.selected = nil
             self.selectedKind = nil
@@ -438,22 +521,30 @@ final class CoveCoreBluetoothTransport: NSObject, CoveBluetoothTransport, @preco
     }
 
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
+        Self.log.notice("Central state changed: \(central.state.rawValue)")
         switch central.state {
         case .poweredOn:
             if wantsScan {
-                // This model may omit its service UUID from advertisements. Scan
-                // briefly, retain only matching names; do not enumerate other data.
                 central.scanForPeripherals(withServices: nil,
                                           options: [CBCentralManagerScanOptionAllowDuplicatesKey: false])
                 onEvent?(.scanning)
-            } else if wantsConnection, let selected, selected.state == .disconnected {
-                scheduleReconnect(selected)
+            } else { resumeSelectedConnection(central) }
+        case .unknown:
+            break
+        case .resetting where wantsConnection, .poweredOff where wantsConnection:
+            // Peripheral handles can become invalid after a radio reset. Keep
+            // only the explicit selection and retrieve a fresh handle on power-on.
+            selected = nil
+            writeCharacteristic = nil
+            notifyCharacteristic = nil
+            if let saved = savedSelection {
+                onEvent?(.reconnecting(saved.id, central.state == .poweredOff
+                    ? "手机蓝牙已关闭，开启后自动重连" : "系统蓝牙正在重置"))
             }
-        case .unknown where selected == nil:
-            break // Initial manager setup is bounded by the preparation timer.
         default:
             wantsScan = false
             wantsConnection = false
+            defaults.removeObject(forKey: Self.selectionKey)
             selected = nil
             selectedKind = nil
             peripherals = [:]
@@ -463,7 +554,6 @@ final class CoveCoreBluetoothTransport: NSObject, CoveBluetoothTransport, @preco
             case .unauthorized: message = "蓝牙权限未开放。可在系统设置中允许 Cove 使用蓝牙。"
             case .poweredOff: message = "手机蓝牙已关闭，请在系统设置中开启后重新扫描。"
             case .unsupported: message = "当前设备不支持所需蓝牙功能。"
-            case .resetting: message = "系统蓝牙正在重置，本次连接已失效；请稍后重新扫描。"
             default: message = "蓝牙暂不可用，请稍后重试。"
             }
             onEvent?(.unavailable(message))
@@ -486,10 +576,8 @@ final class CoveCoreBluetoothTransport: NSObject, CoveBluetoothTransport, @preco
             central.cancelPeripheralConnection(peripheral)
             return
         }
-        reconnectTask?.cancel()
-        onEvent?(.connected(peripheral.identifier))
-        peripheral.delegate = self
-        peripheral.discoverServices(nil)
+        Self.log.notice("BLE connected; validating control channel")
+        prepareControlChannel(peripheral)
     }
 
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
@@ -502,6 +590,9 @@ final class CoveCoreBluetoothTransport: NSObject, CoveBluetoothTransport, @preco
 
     private func connectionEnded(_ peripheral: CBPeripheral, error: Error?) {
         guard selected?.identifier == peripheral.identifier else { return }
+        let code = (error as NSError?)?.code ?? 0
+        let domain = (error as NSError?)?.domain ?? "none"
+        Self.log.notice("BLE connection ended: domain=\(domain, privacy: .public) code=\(code) reconnect=\(self.wantsConnection)")
         writeCharacteristic = nil
         notifyCharacteristic = nil
         pendingCharacteristicServices = 0
@@ -516,14 +607,12 @@ final class CoveCoreBluetoothTransport: NSObject, CoveBluetoothTransport, @preco
     }
 
     private func scheduleReconnect(_ peripheral: CBPeripheral) {
-        reconnectTask?.cancel()
-        reconnectTask = Task { [weak self, weak peripheral] in
-            do { try await Task.sleep(for: .seconds(1)) } catch { return }
-            guard let self, let peripheral, self.wantsConnection,
-                  self.selected?.identifier == peripheral.identifier,
-                  let central = self.central, central.state == .poweredOn else { return }
-            central.connect(peripheral, options: nil)
-        }
+        guard wantsConnection, selected?.identifier == peripheral.identifier,
+              peripheral.state == .disconnected,
+              let central, central.state == .poweredOn else { return }
+        // Submit while handling the BLE event, not after a Task.sleep that iOS
+        // can suspend. CoreBluetooth owns the pending request until it connects.
+        central.connect(peripheral, options: nil)
     }
 
 
@@ -572,6 +661,7 @@ final class CoveCoreBluetoothTransport: NSObject, CoveBluetoothTransport, @preco
     func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
         guard selectedKind == .bobobei, selected?.identifier == peripheral.identifier,
               characteristic.uuid == writeUUID else { return }
+        if let error { Self.log.error("BLE write failed: code=\((error as NSError).code)") }
         onEvent?(.writeCompleted(error?.localizedDescription))
     }
 
@@ -671,6 +761,10 @@ final class CoveToyControl: ObservableObject {
     private var cursor = 0
     private var generation = UUID()
 
+    private func setStatus(_ value: String) {
+        if status != value { status = value }
+    }
+
     var isGranted: Bool { session?.status == "active" && session.map { $0.expiresAt > Date() } == true }
 
     func bind(store: CoveStore, bluetooth: CoveBluetoothConnection) {
@@ -681,8 +775,8 @@ final class CoveToyControl: ObservableObject {
 
     func grant() async {
         guard !isWorking, let store, let bluetooth else { return }
-        guard store.isConnected else { status = "先连接 Cove 服务"; return }
-        guard bluetooth.controlReady, let device = bluetooth.selectedKind else { status = "先连接并验证玩具"; return }
+        guard store.isConnected else { setStatus("先连接 Cove 服务"); return }
+        guard bluetooth.controlReady, let device = bluetooth.selectedKind else { setStatus("先连接并验证玩具"); return }
         isWorking = true
         defer { isWorking = false }
         do {
@@ -693,11 +787,11 @@ final class CoveToyControl: ObservableObject {
             generation = UUID()
             cursor = 0
             session = granted
-            status = "已交给助手"
+            setStatus("已交给助手")
             startPolling(generation)
             startKeepAlive(generation, sessionID: granted.id)
         } catch {
-            status = error.localizedDescription
+            setStatus(error.localizedDescription)
         }
     }
 
@@ -709,11 +803,10 @@ final class CoveToyControl: ObservableObject {
     }
 
     func enteredBackground() {
-        if session != nil {
-            status = "助手仍在控制"
-            return
-        }
         bluetooth?.enteredBackground()
+        if session != nil {
+            setStatus("已保留控制权；后台蓝牙由系统维持")
+        }
     }
 
     func connectionEnded() {
@@ -723,7 +816,7 @@ final class CoveToyControl: ObservableObject {
         keepAlive?.cancel()
         let old = session
         session = nil
-        status = "蓝牙连接已结束，控制权已收回"
+        setStatus("蓝牙连接已结束，控制权已收回")
         if let old, let store {
             Task { try? await store.revokeToyControl(sessionID: old.id) }
         }
@@ -740,7 +833,7 @@ final class CoveToyControl: ObservableObject {
                     return
                 }
                 if !bluetooth.controlReady {
-                    self.status = "蓝牙正在自动重连，控制权仍由助手保留"
+                    self.setStatus("蓝牙正在自动重连，控制权仍由助手保留")
                     do { try await Task.sleep(for: .milliseconds(350)) } catch { return }
                     continue
                 }
@@ -750,12 +843,12 @@ final class CoveToyControl: ObservableObject {
                     guard !Task.isCancelled, self.generation == token else { return }
                     let recovered = consecutiveFailures > 0
                     consecutiveFailures = 0
-                    if recovered { self.status = "助手仍在控制" }
+                    if recovered { self.setStatus("助手仍在控制") }
                     guard result.active else {
                         await self.stopAndRevoke(reason: "授权已失效，玩具已全停", revokeServer: false)
                         return
                     }
-                    if let refreshed = result.session { self.session = refreshed }
+                    if let refreshed = result.session, self.session != refreshed { self.session = refreshed }
                     for command in result.commands {
                         guard !Task.isCancelled, self.generation == token else { return }
                         await self.execute(command, sessionID: current.id, token: token)
@@ -765,7 +858,7 @@ final class CoveToyControl: ObservableObject {
                 } catch {
                     if Task.isCancelled { return }
                     consecutiveFailures += 1
-                    status = "Cove 服务暂时失联，保持当前状态并继续重连"
+                    setStatus("Cove 服务暂时失联，保持当前状态并继续重连")
                 }
                 let delay: Duration = consecutiveFailures == 0 ? .milliseconds(350) : .seconds(1)
                 do { try await Task.sleep(for: delay) } catch { return }
@@ -774,7 +867,7 @@ final class CoveToyControl: ObservableObject {
     }
 
     private func execute(_ command: CoveToyCommand, sessionID: String, token: UUID) async {
-        guard let bluetooth, let store else { return }
+        guard let bluetooth, store != nil else { return }
         keepAlive?.cancel()
         do {
             guard command.expiresAt.map({ $0 > Date() }) != false else {
@@ -805,7 +898,7 @@ final class CoveToyControl: ObservableObject {
                 }
                 guard bluetooth.hasSession else { throw CoveError.message("蓝牙会话已结束。") }
                 if !bluetooth.controlReady || bluetooth.writeInProgress {
-                    status = "蓝牙正在自动重连；过期指令不会补执行"
+                    setStatus("蓝牙正在自动重连；过期指令不会补执行")
                     do { try await Task.sleep(for: .milliseconds(100)) } catch { return }
                     continue
                 }
@@ -818,34 +911,67 @@ final class CoveToyControl: ObservableObject {
                     break
                 } catch {
                     guard bluetooth.hasSession else { throw error }
-                    status = "蓝牙写入未确认，正在自动重连并重试"
+                    setStatus("蓝牙写入未确认，正在自动重连并重试")
                     do { try await Task.sleep(for: .milliseconds(200)) } catch { return }
                 }
             }
             guard generation == token, session?.id == sessionID else { return }
             if command.kind == "stop" {
                 lastLevels = (0, 0, 0)
-                status = "助手已停下"
-                try await store.acknowledgeToyCommand(sessionID: sessionID, commandID: command.id,
-                                                      status: "stopped", startedAt: Date(), stopAt: Date(), error: nil)
+                setStatus("助手已停下")
+                // Resume the BLE heartbeat before any network work. Cove used
+                // to leave the keepalive canceled while waiting for the ACK
+                // request, so a slow network response could make 啵啵贝 drop.
                 startKeepAlive(token, sessionID: sessionID)
+                let acknowledged = await acknowledgeWithRetry(
+                    sessionID: sessionID, commandID: command.id, status: "stopped",
+                    startedAt: Date(), stopAt: Date(), error: nil, token: token)
+                if !acknowledged, generation == token, session?.id == sessionID { setStatus("已全停；Cove 回执暂未送达，请勿重复发送") }
                 return
             }
             let started = Date()
             lastLevels = levels
-            status = "助手正在控制"
-            try await store.acknowledgeToyCommand(sessionID: sessionID, commandID: command.id,
-                                                  status: "started", startedAt: started, stopAt: nil, error: nil)
+            setStatus("助手正在控制")
             startKeepAlive(token, sessionID: sessionID)
+            let acknowledged = await acknowledgeWithRetry(
+                sessionID: sessionID, commandID: command.id, status: "started",
+                startedAt: started, stopAt: nil, error: nil, token: token)
+            if !acknowledged, generation == token, session?.id == sessionID { setStatus("动作已写入；Cove 回执暂未送达，请勿重复发送") }
         } catch {
-            try? await store.acknowledgeToyCommand(sessionID: sessionID, commandID: command.id,
-                                                   status: "failed", startedAt: nil, stopAt: nil,
-                                                   error: error.localizedDescription)
-            status = "这条指令没有写成功，控制权仍由助手保留"
-            if generation == token, session?.id == sessionID {
-                startKeepAlive(token, sessionID: sessionID)
+            guard generation == token, session?.id == sessionID else { return }
+            setStatus("这条指令没有写成功，控制权仍由助手保留")
+            // A failure receipt is network work too: restore the heartbeat first.
+            startKeepAlive(token, sessionID: sessionID)
+            _ = await acknowledgeWithRetry(
+                sessionID: sessionID, commandID: command.id, status: "failed",
+                startedAt: nil, stopAt: nil, error: error.localizedDescription, token: token)
+        }
+    }
+
+    private func acknowledgeWithRetry(
+        sessionID: String,
+        commandID: String,
+        status: String,
+        startedAt: Date?,
+        stopAt: Date?,
+        error: String?,
+        token: UUID
+    ) async -> Bool {
+        guard let store else { return false }
+        for attempt in 0..<3 {
+            guard generation == token, session?.id == sessionID else { return false }
+            do {
+                try await store.acknowledgeToyCommand(
+                    sessionID: sessionID, commandID: commandID, status: status,
+                    startedAt: startedAt, stopAt: stopAt, error: error)
+                return true
+            } catch {
+                guard attempt < 2 else { return false }
+                do { try await Task.sleep(for: .milliseconds(250 * (attempt + 1))) }
+                catch { return false }
             }
         }
+        return false
     }
 
     private func startKeepAlive(_ token: UUID, sessionID: String) {
@@ -860,7 +986,7 @@ final class CoveToyControl: ObservableObject {
                     return
                 }
                 if !bluetooth.controlReady || bluetooth.writeInProgress {
-                    self.status = "蓝牙正在自动重连，控制权仍由助手保留"
+                    self.setStatus("蓝牙正在自动重连，控制权仍由助手保留")
                     continue
                 }
                 do {
@@ -870,7 +996,7 @@ final class CoveToyControl: ObservableObject {
                         rotation: self.lastLevels.rotation)
                 } catch {
                     if bluetooth.hasSession {
-                        self.status = "蓝牙写入未确认，正在自动重连"
+                        self.setStatus("蓝牙写入未确认，正在自动重连")
                         continue
                     }
                     return
@@ -887,7 +1013,7 @@ final class CoveToyControl: ObservableObject {
         if let bluetooth { try? await bluetooth.stopToy() }
         lastLevels = (0, 0, 0)
         session = nil
-        status = reason
+        setStatus(reason)
         if revokeServer, let old, let store { try? await store.revokeToyControl(sessionID: old.id) }
     }
 }

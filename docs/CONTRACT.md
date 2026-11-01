@@ -1,6 +1,6 @@
 # Cove implementation contract
 
-2026-10-29 public snapshot. SwiftUI, **iOS 27.0+ / Xcode 27**; Python 3.12+ backend. Pinned SwiftPM packages: MarkdownUI 2.4.1, swift-cmark 0.5.0, HighlighterSwift 3.1.0, WebRTC 150.0.0. This document is a contract overview, not a claim that optional services are supplied or verified.
+2026-11-01 public snapshot (client build 82). SwiftUI, **iOS 27.0+ / Xcode 27**; Python 3.12+ backend. Pinned SwiftPM packages: MarkdownUI 2.4.1, swift-cmark 0.5.0, HighlighterSwift 3.1.0, WebRTC 150.0.0. This document is a contract overview, not a claim that optional services are supplied or verified.
 
 ## UI and state
 
@@ -35,6 +35,7 @@ The authoritative route validation is `server/cove.py`; domain modules own their
 | `/v1/memory/calendar` | Optional Ombre bucket density, deliberately independent of chat counts |
 | `/v1/health`, `/v1/health/history`, `/v1/health/uploads` | Validated shared snapshots and actual dated archives |
 | `/v1/data-access` | Explicit persisted owner authorization for supported shared life data |
+| `/v1/location/{status,access,response}` | Independent default-off standing location grant, fresh one-shot requests, device/revision-bound response and address data |
 | `/v1/personal-ledger` and subroutes | Separate personal financial records and authorized command ACKs |
 | `/v1/wallet` and subroutes | Assistant virtual wallet and owner-reviewed requests, no bank payments |
 | `/v1/app-events` | Bounded paired App open/close event ingestion/readback, not Screen Time |
@@ -63,6 +64,20 @@ Default `read-only` sandbox / `on-request` approval remain operator-controlled. 
 Execution logs are bounded, redacted and separate from chat messages. No arbitrary tool argument/result or private reasoning dump should become a visible assistant reply. Regex redaction cannot recognize every confidential prose output; safe host permissions remain necessary.
 
 Phone-side confirmation/ACK, Bluetooth actual execution and third-party completion are different states. Pending or uncertain events must not be reported as successful. Revocation, timeout and retries must preserve idempotency and ownership.
+
+## Location and addresses
+
+Manual location cards and automatic one-shot responses carry the same optional
+name/address fields, supplied by Apple reverse geocoding or a selected search
+result. Original coordinate, capture time, accuracy and current/selected source
+remain unchanged. Address lookup is bounded and best effort; missing results stay
+explicitly unresolved. Only user messages render as received location cards.
+
+Location permission and its standing grant are independent of health sharing and
+default off. Acquisition requires foreground execution; background notifications
+only invite the owner to open the app. There is no Always tracking or guaranteed
+force-quit GPS. Grants, pending requests, freshness/revocation fences and at most
+one same-context continuation are specified in [LOCATION_SHARING.md](LOCATION_SHARING.md).
 
 ## Data sharing and optional services
 

@@ -44,6 +44,9 @@ struct CoveApp: App {
                     }
                     await store.resume()
                 }
+                .task(id: phase == .background) {
+                    if phase != .background { await store.runLocationSharing() }
+                }
                 .onChange(of: phase) { _, state in
                     if state == .active { Task { await store.resume() } }
                     else if state == .background {

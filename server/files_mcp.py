@@ -60,7 +60,7 @@ def main():
         if method == 'initialize':
             reply(id, {'protocolVersion': params.get('protocolVersion', '2024-11-05'), 'capabilities': {'tools': {'listChanged': False}}, 'serverInfo': {'name': 'cove_files', 'version': '1.0'}})
         elif method == 'tools/list':
-            reply(id, {'tools': [dict(tool, annotations={'readOnlyHint': tool['name'] in ('cove_read_personal_ledger', 'cove_read_wallet', 'cove_read_weather', 'cove_device_capabilities', 'cove_read_device_action', 'cove_memory_status', 'cove_list_stickers', 'cove_read_health_request', 'cove_read_health', 'cove_read_app_activity', 'cove_collar_summary', 'cove_collar_measurement'), 'destructiveHint': False, 'openWorldHint': tool['name'].startswith('cove_collar_') or tool['name'] == 'cove_read_weather'}) for tool in FILE_TOOLS]})
+            reply(id, {'tools': [dict(tool, annotations={'readOnlyHint': tool['name'] in ('cove_read_location', 'cove_read_personal_ledger', 'cove_read_wallet', 'cove_read_weather', 'cove_device_capabilities', 'cove_read_device_action', 'cove_memory_status', 'cove_list_stickers', 'cove_read_health_request', 'cove_read_health', 'cove_read_app_activity', 'cove_collar_summary', 'cove_collar_measurement'), 'destructiveHint': False, 'openWorldHint': tool['name'].startswith('cove_collar_') or tool['name'] == 'cove_read_weather'}) for tool in FILE_TOOLS]})
         elif method == 'tools/call':
             try:
                 data = json.dumps({'tool': params.get('name'), 'arguments': params.get('arguments'),
@@ -80,7 +80,9 @@ def main():
                     reason = 'File callback rejected'
                 reply(id, {'content': [{'type': 'text', 'text': reason}], 'isError': True})
             except Exception:
-                reason = ('Purchase outcome unknown; do not issue a new purchase call. Read the wallet and ask the owner to reconcile.'
+                reason = ('Voice outcome unknown; do not retry with another call, text or voice. No playback confirmed.'
+                          if params.get('name') == 'cove_send_voice' else
+                          'Purchase outcome unknown; do not issue a new purchase call. Read the wallet and ask the owner to reconcile.'
                           if params.get('name') == 'cove_request_purchase' else
                           'Bookkeeping outcome unknown; read personal ledger command statuses before creating another command. No payment was executed.'
                           if params.get('name') == 'cove_record_personal_ledger' else

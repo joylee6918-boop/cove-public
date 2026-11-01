@@ -90,6 +90,7 @@
 		94FBD05437A787950BA50BCF /* CoveLedgerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBAEF3BCF92900B0EC684A80 /* CoveLedgerView.swift */; };
 		9554106B904214FB902F2FC5 /* CoveWidgetMarkdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AF89724DB10213F13A5C96E /* CoveWidgetMarkdown.swift */; };
 		9CC3D4F3DA4476D07FC94038 /* CoveSystemCapabilitiesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD3FF0D135AC6CBB3700D341 /* CoveSystemCapabilitiesView.swift */; };
+		A0CF95A1555B1B24C02B0F09 /* LocationSharing.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA1B31F88594576409BA1DCA /* LocationSharing.swift */; };
 		A3BEDC8BC7E9D441461F1FF5 /* CoveLaunchPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F231FEF1A87D5B972B9C573B /* CoveLaunchPresentationTests.swift */; };
 		A548A9071B20A871DE791C4B /* CoveWallpaperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C37097332620060F454B459 /* CoveWallpaperTests.swift */; };
 		A8EC5F4FC112E1A58E3FC096 /* CoveHomeMemories.swift in Sources */ = {isa = PBXBuildFile; fileRef = 476CDB68E4E75CBDBCC3067E /* CoveHomeMemories.swift */; };
@@ -261,6 +262,7 @@
 		D2A4CC64432E931CF27015FC /* CoveTerminalModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveTerminalModel.swift; sourceTree = "<group>"; };
 		D62D402FD72123871B81EBD1 /* CoveHealthArchive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveHealthArchive.swift; sourceTree = "<group>"; };
 		D95A2B19D3A5FB9101B8014B /* CoveWallpaper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveWallpaper.swift; sourceTree = "<group>"; };
+		DA1B31F88594576409BA1DCA /* LocationSharing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationSharing.swift; sourceTree = "<group>"; };
 		DB1B4AC59DA3969214383F5A /* CoveChatStyleUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveChatStyleUITests.swift; sourceTree = "<group>"; };
 		DF0BD148C1BCA0C211CE528C /* CoveWidgetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveWidgetTests.swift; sourceTree = "<group>"; };
 		E23D679B28152A16C36E1ECC /* CoveTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CoveTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -394,6 +396,7 @@
 				70FFC2C9BBFD5E2A0A433E05 /* CoveWidgetView.swift */,
 				7166656FC7FE5E0BD7BE0471 /* HealthSync.swift */,
 				A8027850263DDDBF05074C48 /* Info.plist */,
+				DA1B31F88594576409BA1DCA /* LocationSharing.swift */,
 				2356289E7FF1572B4142ADAA /* MarkdownMessageView.swift */,
 				EFA252EA52A6537C594965F4 /* Models.swift */,
 				07534B8783E64DFED1471860 /* RichPreview.swift */,
@@ -735,6 +738,7 @@
 				6B5B4D87DAC7FEFFD9CE81B4 /* CoveWidgetPreview.swift in Sources */,
 				DBA55981C4E9AE36A4EFF210 /* CoveWidgetView.swift in Sources */,
 				7314D6BFAAA8775D18620526 /* HealthSync.swift in Sources */,
+				A0CF95A1555B1B24C02B0F09 /* LocationSharing.swift in Sources */,
 				EAD25B743BC56E156160E221 /* MarkdownMessageView.swift in Sources */,
 				1E37E9234FCCF128CC172C8F /* Models.swift in Sources */,
 				0EAB37E2DCD37005D80352D1 /* RichPreview.swift in Sources */,
@@ -914,7 +918,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 79;
+				CURRENT_PROJECT_VERSION = 82;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -982,7 +986,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 79;
+				CURRENT_PROJECT_VERSION = 82;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;

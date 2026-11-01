@@ -1,6 +1,6 @@
 # Cove self-hosted backend
 
-2026-10-29 public snapshot · **Python 3.12+** · one owner per instance.
+2026-11-01 public snapshot · **Python 3.12+** · one owner per instance.
 
 Core chat uses Python's standard library, SQLite and a separately installed/authenticated Codex CLI. Optional integrations are not bundled services. Read [Developer-only boundaries](../docs/DEVELOPER_FEATURES.md) before enabling them.
 
@@ -52,6 +52,21 @@ python3 -m venv .venv
 . .venv/bin/activate
 python3 -m pip install -r requirements-apns.txt
 ```
+
+## Optional paid speech
+
+`cove_send_voice` accepts `text` and optional `voice` (`minimax` / `elevenlabs`).
+Omission follows `COVE_VOICE_DEFAULT`, which remains `minimax` unless explicitly
+changed. MiniMax uses `COVE_MINIMAX_API_KEY` / `COVE_MINIMAX_VOICE_ID`. ElevenLabs
+requires both `COVE_ELEVENLABS_KEY_PATH` and `COVE_ELEVENLABS_VOICE_ID`; the key file
+must be an absolute regular file owned by the service uid, mode0600, not a symlink.
+No voice ID, private delivery instructions or fixed personal seed is bundled.
+Check provider/model availability and cost in your own account before enabling it.
+
+Keys stay host-side and are excluded from the app-server child environment.
+Responses are bounded MP3 bytes; redirects are rejected. The durable tool receipt
+is written before provider IO. Unknown/failed outcomes do not retry with changed
+text or another provider, avoiding a second paid attempt hidden behind a fallback.
 
 ## Durability and upgrades
 

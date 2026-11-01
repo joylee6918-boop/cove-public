@@ -1,4 +1,4 @@
-"""Bounded, opt-in MiniMax text-to-speech provider.
+"""Bounded, opt-in operator-configured text-to-speech providers.
 
 The API key and voice id are host configuration.  They are deliberately never
 accepted from a phone request.  Network IO is injectable so tests never spend
@@ -125,3 +125,64 @@ class MiniMaxVoiceProvider:
         if not audio or len(audio) > self.config.maximum_audio_bytes:
             raise VoiceProviderError("MiniMax 音频为空或超过 20 MiB")
         return audio, "audio/mpeg"
+
+
+# Optional paid provider. No maintainer voice identity or delivery profile is bundled.
+class ElevenLabsVoiceProvider:
+    MODEL = "eleven_v4"
+    SETTINGS = {"stability": 0.5, "similarity_boost": 0.75}
+    MAX_AUDIO = 20 * 1024 * 1024
+
+    def __init__(self, key_path, voice_id="", opener=None):
+        from pathlib import Path
+        import re
+        if not key_path or not Path(key_path).is_absolute():
+            raise VoiceProviderError("ElevenLabs 语音未配置")
+        if not isinstance(voice_id, str) or not re.fullmatch(r"[A-Za-z0-9]{20,64}", voice_id):
+            raise VoiceProviderError("ElevenLabs 音色配置无效")
+        self.key_path, self.voice_id = Path(key_path), voice_id
+        self._opener = opener or _no_redirect_open
+
+    def _key(self):
+        import stat
+        try:
+            fd = os.open(self.key_path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+            with os.fdopen(fd, "r") as file:
+                info = os.fstat(file.fileno())
+                if not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid() or info.st_mode & 0o077:
+                    raise ValueError("unsafe credential file")
+                key = file.read(8193).strip()
+                if not key or len(key) > 8192: raise ValueError("invalid credential")
+                return key
+        except (OSError, ValueError, UnicodeError):
+            raise VoiceProviderError("ElevenLabs 服务端凭据不可用") from None
+
+    def synthesize(self, text):
+        if not isinstance(text, str) or not 1 <= len(text.strip()) <= 2000:
+            raise VoiceProviderError("语音文本须为 1 至 2000 个字符")
+        payload = {"text": text, "model_id": self.MODEL, "voice_settings": dict(self.SETTINGS)}
+        request = urllib.request.Request(
+            "https://api.elevenlabs.io/v1/text-to-speech/" + self.voice_id + "?output_format=mp3_44100_128",
+            data=json.dumps(payload, ensure_ascii=False).encode(), method="POST",
+            headers={"xi-api-key": self._key(), "Content-Type": "application/json", "Accept": "audio/mpeg"})
+        try:
+            with self._opener(request, timeout=60) as response:
+                audio = response.read(self.MAX_AUDIO + 1)
+                if response.status != 200: raise ValueError("invalid response")
+        except (urllib.error.URLError, TimeoutError, OSError, ValueError):
+            raise VoiceProviderError("ElevenLabs 语音结果未确认，请勿自动重试或更换声音重试") from None
+        if (not audio or len(audio) > self.MAX_AUDIO or not
+                (audio.startswith(b"ID3") or (len(audio) > 1 and audio[0] == 255 and audio[1] & 224 == 224))):
+            raise VoiceProviderError("ElevenLabs 返回了无效或过大的 MP3，不自动重试")
+        return audio, "audio/mpeg"
+
+
+def selected_voice_provider(voice=None, env=None):
+    env = os.environ if env is None else env
+    selected = env.get("COVE_VOICE_DEFAULT", "minimax") if voice is None else voice
+    if selected == "minimax":
+        return MiniMaxVoiceProvider(MiniMaxVoiceConfig.from_env(env))
+    if selected == "elevenlabs":
+        return ElevenLabsVoiceProvider(env.get("COVE_ELEVENLABS_KEY_PATH", ""),
+            env.get("COVE_ELEVENLABS_VOICE_ID", ""))
+    raise VoiceProviderError("声音选择须为 elevenlabs 或 minimax")

@@ -148,7 +148,7 @@ final class CoveBluetoothConnectionTests: XCTestCase {
         XCTAssertEqual(transport.scans, 1)
     }
 
-    func testBackgroundDisconnectsPendingAndEstablishedConnections() {
+    func testBackgroundRetainsPendingAndEstablishedConnections() {
         for connected in [false, true] {
             let transport = Transport()
             let model = CoveBluetoothConnection(transport: transport)
@@ -156,13 +156,25 @@ final class CoveBluetoothConnectionTests: XCTestCase {
             model.selectFromUserAction(device.id)
             if connected { transport.emit(.connected(device.id)) }
             model.enteredBackground()
-            XCTAssertEqual(model.phase, .disconnecting)
-            XCTAssertEqual(transport.disconnects, 1)
-            transport.emit(.disconnected(device.id, nil))
-            XCTAssertEqual(model.phase, .idle)
+            XCTAssertEqual(model.phase, connected ? .connected : .connecting)
+            XCTAssertEqual(transport.disconnects, 0)
+            XCTAssertEqual(model.selectedID, device.id)
             XCTAssertEqual(transport.connections.count, 1)
-            XCTAssertTrue(model.devices.isEmpty)
+            model.endSession()
         }
+    }
+
+    func testRestorationOnlyRestoresConnectionNeverOldCommands() {
+        let transport = Transport()
+        let model = CoveBluetoothConnection(transport: transport)
+        transport.emit(.restoring(device))
+        XCTAssertEqual(model.phase, .connecting)
+        XCTAssertEqual(model.selectedID, device.id)
+        transport.emit(.connected(device.id))
+        transport.emit(.controlReady(device.id))
+        XCTAssertTrue(model.controlReady)
+        XCTAssertTrue(transport.writes.isEmpty)
+        model.endSession()
     }
 
     func testRadioUnavailableClearsSessionWithoutReconnect() {
