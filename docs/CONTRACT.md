@@ -1,6 +1,6 @@
 # Cove implementation contract
 
-2026-11-01 public snapshot (client build 82). SwiftUI, **iOS 27.0+ / Xcode 27**; Python 3.12+ backend. Pinned SwiftPM packages: MarkdownUI 2.4.1, swift-cmark 0.5.0, HighlighterSwift 3.1.0, WebRTC 150.0.0. This document is a contract overview, not a claim that optional services are supplied or verified.
+2026-11-04 public snapshot (client build 86). SwiftUI, **iOS 27.0+ / Xcode 27**; Python 3.12+ backend. Pinned SwiftPM packages: MarkdownUI 2.4.1, swift-cmark 0.5.0, HighlighterSwift 3.1.0, WebRTC 150.0.0. This document is a contract overview, not a claim that optional services are supplied or verified.
 
 ## UI and state
 
@@ -36,9 +36,10 @@ The authoritative route validation is `server/cove.py`; domain modules own their
 | `/v1/health`, `/v1/health/history`, `/v1/health/uploads` | Validated shared snapshots and actual dated archives |
 | `/v1/data-access` | Explicit persisted owner authorization for supported shared life data |
 | `/v1/location/{status,access,response}` | Independent default-off standing location grant, fresh one-shot requests, device/revision-bound response and address data |
+| `/v1/location/geofences/{status,config,event}` | Independent default-off home/work region grant, coordinate-free observations and bounded ordinary/Pulse context |
 | `/v1/personal-ledger` and subroutes | Separate personal financial records and authorized command ACKs |
 | `/v1/wallet` and subroutes | Assistant virtual wallet and owner-reviewed requests, no bank payments |
-| `/v1/app-events` | Bounded paired App open/close event ingestion/readback, not Screen Time |
+| `/v1/app-events`, `/v1/app-events/queued` | Write-only token; legacy 10-minute or queued 7-day bounded App-event ingestion, not Screen Time |
 | `/v1/device-actions/...` | Scoped iPhone system capabilities, requests, confirmation and ACK |
 | `/v1/devices` | APNs registration/removal for the operator's signed app |
 | `/v1/terminal...` | Current-conversation execution log, actual model catalog and scoped approvals |
@@ -75,9 +76,21 @@ explicitly unresolved. Only user messages render as received location cards.
 
 Location permission and its standing grant are independent of health sharing and
 default off. Acquisition requires foreground execution; background notifications
-only invite the owner to open the app. There is no Always tracking or guaranteed
-force-quit GPS. Grants, pending requests, freshness/revocation fences and at most
+only invite the owner to open the app. This one-shot grant has no Always tracking
+or guaranteed force-quit GPS. Grants, pending requests, freshness/revocation fences and at most
 one same-context continuation are specified in [LOCATION_SHARING.md](LOCATION_SHARING.md).
+
+Home/work geofences use a **separate** explicit grant and require Always/precise
+permission for system background region monitoring. Initial foreground presence
+can be confirmed with a single authorized fix. Only labels, radii, states and
+observation times reach the server; no coordinates or continuous route upload.
+Initial/reconcile observations enter existing model inputs, not extra turns.
+See [GEOFENCING.md](GEOFENCING.md).
+
+Native App Intent recording commits an event locally before network transmission.
+Each configured recipient has its own write-only credential and immutable ACK.
+The optional second compatible backend is not included in this repository.
+See [APP_ACTIVITY_INTENTS.md](APP_ACTIVITY_INTENTS.md).
 
 ## Data sharing and optional services
 

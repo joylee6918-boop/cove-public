@@ -45,6 +45,7 @@ struct CoveAppActivityView: View {
     @State private var error: String?
     @State private var loading = false
     @State private var refreshID = UUID()
+    @State private var showingRecording = false
     private var zone: TimeZone { .current }
     private var day: String { CoveAppActivitySummary.dayString(date, timeZone: zone) }
     private var queryID: String { "\(day)|\(zone.identifier)|\(refreshID)" }
@@ -52,7 +53,7 @@ struct CoveAppActivityView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Label("App 使用 · Cove 独立记录", systemImage: "apps.iphone").font(.headline)
-            Text("沿用同几个 App，但只统计快捷指令发给 Cove 的打开／离开事件。不读取 Seen 或 another assistant 的历史，也不会自动发进对话。")
+            Text("统计自动化实际送达 Cove 的打开／离开事件，不是系统全量屏幕使用时间。不读取 Seen 或 another assistant 的历史。")
                 .font(.caption).foregroundStyle(CoveStyle.secondaryText)
             DatePicker("记录日期", selection: $date, in: ...Date(), displayedComponents: .date)
                 .accessibilityIdentifier("appActivity.date")
@@ -91,14 +92,20 @@ struct CoveAppActivityView: View {
             Button { refreshID = UUID() } label: { Label("刷新记录", systemImage: "arrow.clockwise") }
                 .frame(minHeight: 44).disabled(loading || store.previewMode || !store.isConnected)
                 .accessibilityIdentifier("appActivity.refresh")
-            DisclosureGroup("同几个 App，如何分别记录") {
-                Text("保留原来给 another assistant 的打开和关闭自动化。在同一触发器中增加 Cove 专用上报动作，使用 Cove 独立地址和仅能写入事件的密钥。打开用 open，离开用 close，两边分别保存；不替换原动作。停用 Cove 时，只移除新增的 Cove 动作。")
-                    .font(.caption).foregroundStyle(CoveStyle.secondaryText).padding(.top, 6)
-            }.font(.subheadline)
+            Button { showingRecording = true } label: {
+                Label("自动记录与双端同步", systemImage: "arrow.triangle.2.circlepath")
+            }.disabled(store.previewMode)
+            Text("原生动作先存手机，再独立补传给已配置的接收端；旧的联网自动化保持停用。")
+                .font(.caption).foregroundStyle(CoveStyle.secondaryText)
         }
         .frame(maxWidth: .infinity, alignment: .leading).padding(16)
         .background(CoveStyle.card, in: RoundedRectangle(cornerRadius: 14))
         .task(id: queryID) { await load() }
+        .sheet(isPresented: $showingRecording) {
+            if !store.previewMode {
+                NavigationStack { CoveActivityRecordingView() }
+            }
+        }
     }
 
     private func duration(_ seconds: Double) -> String {

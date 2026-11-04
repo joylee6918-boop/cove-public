@@ -2,6 +2,7 @@
 import json
 from location_share import LocationShare, LocationError, tools
 from storage import APIError, now
+from geofence import Geofences
 
 LOCATION_TOOLS = tools('cove')
 LOCATION_GUIDANCE = ('[Cove 位置] cove_request_location({reason}) 可在普通聊天或 Pulse 主动请求一次手机新位置。'
@@ -14,6 +15,7 @@ class CoveLocation:
     def __init__(self, store):
         self.store = store
         self.data = LocationShare(store.directory / 'location.sqlite3')
+        self.geofences = Geofences(store.directory / 'geofences.sqlite3')
 
     def tool(self, message, turn, name, arguments, conversation):
         try:
@@ -39,6 +41,8 @@ class CoveLocation:
 
     def route(self, action, method, body):
         try:
+            if action.startswith('geofences/'):
+                return self.geofences.route(action.removeprefix('geofences/'), method, body)
             if action == 'status' and method == 'GET':
                 return self.data.status()
             if action == 'access' and method == 'POST':

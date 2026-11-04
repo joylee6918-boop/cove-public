@@ -2102,6 +2102,11 @@ private struct SettingsView: View {
             }
             Section("位置共享") {
                 NavigationLink {
+                    GeofenceSettings(sharing: .shared, companion: "Assistant")
+                        .onAppear { CoveGeofences.configure() }
+                } label: { Label("家与公司 · 地理围栏", systemImage: "location.circle") }
+                    .disabled(store.previewMode)
+                NavigationLink {
                     LocationShareSettings(sharing: store.locationSharing, companion: "Assistant")
                         .task { store.configureLocationSharing(); await store.locationSharing.refresh() }
                 } label: { Label("持续位置授权", systemImage: "location") }
@@ -2231,7 +2236,7 @@ private struct SettingsView: View {
             Section {
                 Text("对话由你自己的服务保存。健康可逐次分享，也可由你开启跨对话的持续读取；持续授权同时涵盖已接入的生活数据与账本代记，不包含银行付款。关闭授权不会自动删除已有副本。")
                     .font(.footnote).foregroundStyle(CoveStyle.secondaryText)
-                LabeledContent("版本", value: "0.1.0 · 公开源码更新 2026-11-01")
+                LabeledContent("版本", value: "0.1.0 · 公开源码更新 2026-11-04")
                 if !store.previewMode { Button("查看示例预览") { store.enablePreview() } }
             } header: { Text("数据与关于") } footer: { Text("示例预览使用明确标注的样例，不会发送消息或上传健康数据。") }
         }

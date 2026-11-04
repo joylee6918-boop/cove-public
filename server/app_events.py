@@ -11,6 +11,10 @@ from storage import APIError
 
 MAX_BODY = 2048
 MAX_DELAY_SECONDS = 600
+MAX_QUEUED_DELAY_SECONDS = 7 * 24 * 60 * 60
+QUEUED_APPS = ("微信", "抖音", "淘宝", "ChatGPT", "Cove", "CCC", "Safari", "小红书")
+APP_ALIASES = {"WeChat": "微信", "rednote": "小红书"}
+UUID_ID = re.compile(r"[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}")
 MAX_SESSION_SECONDS = 86400
 MAX_EVENTS = 250_000
 ID = re.compile(r'[A-Za-z0-9_.-]{1,128}')
@@ -90,23 +94,35 @@ class AppEvents:
         with self.lock:
             self.db.close()
 
-    def ingest(self, body):
+    def ingest(self, body, *, queued=False):
         if not self.configured:
             raise APIError(503, 'Cove 独立快捷指令尚未配置')
         event, stamp = normalize(body)
+        original = event.copy()
+        if queued:
+            if not UUID_ID.fullmatch(event['id']):
+                raise APIError(400, '队列事件 ID 必须是 UUID')
+            event['app'] = APP_ALIASES.get(event['app'], event['app'])
+            if event['app'] not in QUEUED_APPS:
+                raise APIError(400, '队列只接收已配置的八个 App')
         current = self.clock()
         with self.lock, self.db:
             old = self.db.execute('SELECT * FROM events WHERE id=?', (event['id'],)).fetchone()
             if old:
-                if any(old[key] != event[key] for key in event):
+                # A pre-existing legacy alias keeps its exact stored identity.
+                if (any(old[key] != event[key] for key in event)
+                        and any(old[key] != original[key] for key in original)):
                     raise APIError(409, '事件 ID 已用于不同内容')
                 return {'ok': True, 'id': event['id'], 'duplicate': True}
             started = datetime.fromisoformat(self.started_at.replace('Z', '+00:00')).timestamp()
-            if stamp < started or not -60 <= current.timestamp() - stamp <= MAX_DELAY_SECONDS:
+            maximum = MAX_QUEUED_DELAY_SECONDS if queued else MAX_DELAY_SECONDS
+            if stamp < started or not -60 <= current.timestamp() - stamp <= maximum:
+                if queued:
+                    raise APIError(400, "仅接受配置后且七天以内的新事件；未来时间最多容差一分钟")
                 raise APIError(400, '仅接受配置后且十分钟以内的新事件；未来时间最多容差一分钟')
             if self.db.execute('SELECT count(*) FROM events').fetchone()[0] >= MAX_EVENTS:
                 raise APIError(507, 'Cove App 事件存储已满；未删除旧记录')
-            utc_day = int(current.timestamp() // 86400) * 86400
+            utc_day = int((stamp if queued else current.timestamp()) // 86400) * 86400
             count = self.db.execute('SELECT count(*) FROM events WHERE stamp>=? AND stamp<?',
                                     (utc_day, utc_day + 86400)).fetchone()[0]
             if count >= 10000:

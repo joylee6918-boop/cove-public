@@ -48,7 +48,11 @@ struct CoveApp: App {
                     if phase != .background { await store.runLocationSharing() }
                 }
                 .onChange(of: phase) { _, state in
-                    if state == .active { Task { await store.resume() } }
+                    if state == .active {
+                        CoveGeofences.configure(preview: store.previewMode)
+                        CoveActivityRecorder.configure(preview: store.previewMode)
+                        Task { await store.resume() }
+                    }
                     else if state == .background {
                         toyControl.enteredBackground()
                         launchPresentation.dismiss(reason: "backgrounded")
@@ -56,7 +60,11 @@ struct CoveApp: App {
                     }
                 }
                 .onChange(of: store.appearance) { _, _ in store.saveSettings() }
-                .onChange(of: store.previewMode) { _, enabled in bluetooth.setPreviewMode(enabled) }
+                .onChange(of: store.previewMode) { _, enabled in
+                    bluetooth.setPreviewMode(enabled)
+                    CoveGeofences.configure(preview: enabled)
+                    CoveActivityRecorder.configure(preview: enabled)
+                }
                 .onChange(of: store.notificationsEnabled) { _, _ in store.saveSettings() }
                 .onChange(of: store.notificationPreviewMode) { _, _ in store.saveSettings() }
                 .onOpenURL { _ in launchPresentation.dismiss(reason: "deepLink") }
@@ -83,9 +91,18 @@ final class CoveAppDelegate: NSObject, UIApplicationDelegate, UNUserNotification
     @MainActor private var pendingNotificationFocus = false
     weak var launchPresentation: CoveLaunchPresentation?
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        // A location launch must restore CoreLocation even without a visible scene.
+        CoveGeofences.configure()
+        CoveActivityRecorder.registerBackgroundTask()
+        CoveActivityRecorder.configure()
         Self.launchedFromNotification = launchOptions?[.remoteNotification] != nil
         UNUserNotificationCenter.current().delegate = self
         return true
+    }
+    func application(_ application: UIApplication, handleEventsForBackgroundURLSession identifier: String,
+                     completionHandler: @escaping () -> Void) {
+        guard identifier == CoveActivityRecorder.sessionID else { completionHandler(); return }
+        CoveActivityRecorder.shared.handleBackgroundEvents(completion: completionHandler)
     }
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         let token = deviceToken.map { String(format: "%02x", $0) }.joined()

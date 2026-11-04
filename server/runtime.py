@@ -791,6 +791,11 @@ class CodexRuntime(TerminalRuntime, RealtimeBridge):
             text += '\n' + DEVICE_GUIDANCE
         if not handoff:
             from cove_location import LOCATION_GUIDANCE
+            if not continuation and getattr(self, 'location', None):
+                try:
+                    text += self.location.geofences.context()
+                except Exception:
+                    pass  # unavailable sensor data is unknown, never blocks chat
             if not continuation and (job['message'].startswith('pulse-cove-') or
                     any(word in job['user']['text'].lower() for word in ('位置', '定位', '在哪', '到哪', 'location'))):
                 text += '\n' + LOCATION_GUIDANCE

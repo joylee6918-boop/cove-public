@@ -340,6 +340,7 @@ class Application:
         self.app_events.close()
         self.wallet.close()
         self.location.data.close()
+        self.location.geofences.close()
 
     def handler(self):
         app = self
@@ -406,13 +407,14 @@ class Application:
                     return {'ok': True, 'service': 'cove'}
                 authorization = self.headers.get('Authorization', '')
                 # The shortcut credential is intentionally not added to owner auth.
-                if method == 'POST' and path == '/v1/app-events':
+                if method == 'POST' and path in ('/v1/app-events', '/v1/app-events/queued'):
                     if not app.shortcuts_token or not hmac.compare_digest(
                             authorization.encode(), ('Bearer ' + app.shortcuts_token).encode()):
                         raise APIError(401, '快捷指令专用密钥无效或尚未配置')
                     if url.query:
                         raise APIError(400, 'App 事件接口不接受查询参数')
-                    return app.app_events.ingest(self.body(APP_EVENT_MAX_BODY))
+                    return app.app_events.ingest(self.body(APP_EVENT_MAX_BODY),
+                                                 queued=path == '/v1/app-events/queued')
                 if not hmac.compare_digest(authorization.encode(), ('Bearer ' + app.token).encode()):
                     raise APIError(401, '连接密钥无效')
                 if path == '/v1/personal-ledger' or path.startswith('/v1/personal-ledger/'):

@@ -431,6 +431,12 @@ struct SharedLocationCard: View {
 }
 
 struct LocationPickerSheet: View {
+    var title = "发送位置"
+    var actionTitle = "发送"
+    var radiusMeters: Double? = nil
+    var radiusBinding: Binding<Double>? = nil
+    var removePlace: (() -> Void)? = nil
+    var initialLocation: SharedLocation? = nil
     let send: (SharedLocation) async throws -> Void
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
@@ -445,55 +451,119 @@ struct LocationPickerSheet: View {
     @State private var selectionGeneration = UUID()
     @State private var selectionTask: Task<Void, Never>?
     @State private var resolvingAddress = false
+    @State private var confirmingRemoval = false
+    private var displayedRadius: Double? { radiusBinding?.wrappedValue ?? radiusMeters }
     var body: some View {
         NavigationStack {
-            VStack(spacing: 12) {
-                HStack {
-                    TextField("搜索地点", text: $query).textFieldStyle(.roundedBorder).onSubmit { Task { await search() } }
-                    Button("搜索") { Task { await search() } }
-                }.padding(.horizontal)
-                Button { Task { await current() } } label: { Label("使用当前位置", systemImage: "location.fill") }.disabled(busy)
-                if let location {
-                    MapReader { proxy in
-                        Map(position: $camera) { Marker(location.name ?? "选定位置", coordinate: location.coordinate) }
-                            .onTapGesture { point in
-                                if let coordinate = proxy.convert(point, from: .local) { choose(coordinate, name: "地图选点", address: nil) }
-                            }
-                    }.frame(minHeight: 200, maxHeight: 300)
-                    Text(location.displayName).font(.headline)
-                    Text(resolvingAddress ? "正在解析地址…" : location.displayAddress)
-                        .font(.subheadline).padding(.horizontal)
-                    Text(location.source == "current" ? "仅发送这次定位，精度约 \(Int(location.accuracyMeters)) 米" : "这是选定地点，不表示你已经在那里")
-                        .font(.footnote).foregroundStyle(.secondary)
-                }
-                if !results.isEmpty {
-                    List(Array(results.enumerated()), id: \.offset) { _, item in
-                        Button { choose(item.placemark.coordinate, name: item.name, address: item.placemark.title) } label: {
-                            VStack(alignment: .leading) { Text(item.name ?? "地点"); Text(item.placemark.title ?? "").font(.caption).foregroundStyle(.secondary) }
-                        }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                        TextField("搜索小区、公司或地址", text: $query)
+                            .submitLabel(.search).onSubmit { Task { await search() } }
+                        Button("搜索") { Task { await search() } }
+                            .buttonStyle(.borderless).disabled(query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
-                }
-                if busy { ProgressView() }
-                if let error { Text(error).foregroundStyle(.red).font(.footnote).padding(.horizontal) }
-                Spacer(minLength: 0)
+                    .padding(14).background(.background, in: RoundedRectangle(cornerRadius: 16))
+                    Button { Task { await current() } } label: {
+                        Label("使用当前位置", systemImage: "location.fill")
+                            .font(.subheadline.weight(.medium)).frame(maxWidth: .infinity, minHeight: 46)
+                            .background(Color.accentColor.opacity(0.09), in: RoundedRectangle(cornerRadius: 14))
+                    }.buttonStyle(.plain).foregroundStyle(Color.accentColor).disabled(busy)
+
+                    if let location {
+                        VStack(alignment: .leading, spacing: 0) {
+                            MapReader { proxy in
+                                Map(position: $camera) {
+                                    if let radius = displayedRadius {
+                                        MapCircle(center: location.coordinate, radius: radius)
+                                            .foregroundStyle(Color.accentColor.opacity(0.16)).stroke(Color.accentColor, lineWidth: 1.5)
+                                    }
+                                    Marker(location.displayName, coordinate: location.coordinate)
+                                }
+                                .onTapGesture { point in
+                                    if let coordinate = proxy.convert(point, from: .local) { choose(coordinate, name: "地图选点", address: nil) }
+                                }
+                            }.frame(height: 250)
+                            VStack(alignment: .leading, spacing: 7) {
+                                Text(location.displayName).font(.headline)
+                                Text(resolvingAddress ? "正在解析地址…" : location.displayAddress)
+                                    .font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                                Text(radiusBinding == nil ? "仅分享这个位置" : "轻点地图，可以微调围栏中心")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }.padding(16)
+                        }.background(.background, in: RoundedRectangle(cornerRadius: 18))
+                            .clipShape(RoundedRectangle(cornerRadius: 18))
+                    }
+                    if let radiusBinding {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Label("围栏范围", systemImage: "circle.dashed").font(.subheadline.weight(.medium))
+                                Spacer()
+                                Text("\(Int(radiusBinding.wrappedValue)) 米").font(.subheadline.monospacedDigit().weight(.semibold))
+                                    .foregroundStyle(Color.accentColor)
+                            }
+                            Slider(value: radiusBinding, in: 100...1000, step: 50)
+                            HStack { Text("更近 · 100 米"); Spacer(); Text("更宽 · 1 公里") }
+                                .font(.caption2).foregroundStyle(.secondary)
+                        }.padding(16).background(.background, in: RoundedRectangle(cornerRadius: 18))
+                    }
+                    if !results.isEmpty {
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(Array(results.enumerated()), id: \.offset) { index, item in
+                                Button { choose(item.placemark.coordinate, name: item.name, address: item.placemark.title) } label: {
+                                    HStack(spacing: 12) {
+                                        Image(systemName: "mappin.circle").font(.title3).foregroundStyle(Color.accentColor)
+                                        VStack(alignment: .leading, spacing: 5) {
+                                            Text(item.name ?? "地点").font(.subheadline.weight(.medium)).foregroundStyle(.primary)
+                                            Text(item.placemark.title ?? "").font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                                        }
+                                        Spacer(minLength: 0)
+                                    }.frame(maxWidth: .infinity, minHeight: 48, alignment: .leading).contentShape(Rectangle()).padding(14)
+                                }.buttonStyle(.plain)
+                                if index < results.count - 1 { Divider().padding(.leading, 46) }
+                            }
+                        }.background(.background, in: RoundedRectangle(cornerRadius: 18))
+                    }
+                    if busy { ProgressView().frame(maxWidth: .infinity) }
+                    if let error { Text(error).foregroundStyle(.red).font(.footnote) }
+                    if removePlace != nil {
+                        Button(role: .destructive) { confirmingRemoval = true } label: {
+                            Label("移除这个围栏", systemImage: "trash").frame(maxWidth: .infinity, minHeight: 44)
+                        }.buttonStyle(.borderless).padding(.top, 8)
+                    }
+                }.padding(20)
             }
-            .navigationTitle("发送位置").navigationBarTitleDisplayMode(.inline)
+            .background(Color(uiColor: .systemGroupedBackground))
+            .scrollDismissesKeyboard(.interactively)
+            .navigationTitle(title).navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                if location == nil, let initialLocation {
+                    location = initialLocation
+                    camera = .region(.init(center: initialLocation.coordinate, span: .init(latitudeDelta: 0.012, longitudeDelta: 0.012)))
+                }
+            }
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() }.buttonStyle(.borderless) }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("发送") { Task {
+                    Button(actionTitle) { Task {
                         guard let location, !busy, !resolvingAddress else { return }
                         busy = true
                         do { try await send(location); dismiss() } catch { self.error = error.localizedDescription }
                         busy = false
-                    } }.disabled(location == nil || busy || resolvingAddress)
+                    } }.fontWeight(.semibold).buttonStyle(.borderless).disabled(location == nil || busy || resolvingAddress)
                 }
+            }
+            .confirmationDialog("移除这个围栏？", isPresented: $confirmingRemoval, titleVisibility: .visible) {
+                Button("移除", role: .destructive) { removePlace?(); dismiss() }
             }
             .onDisappear { cancelSelection(); searchGeneration = UUID() }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .background { cancelSelection(); searchGeneration = UUID() }
             }
         }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
     }
     private func cancelSelection() {
         selectionGeneration = UUID()

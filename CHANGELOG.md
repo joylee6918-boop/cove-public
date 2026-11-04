@@ -1,5 +1,44 @@
 # Changelog
 
+## 2026-11-04 — geofencing and native activity queue (client build 86)
+
+Incremental sanitized changes on the public branch, not private Git history or a
+production deployment. No operational handoff, personal records, private media,
+credentials or signing identity are imported.
+
+### Included
+
+- Default-off home/work geofences, phone-only centers, bounded durable event IDs,
+  configuration/revocation fencing and initial/reconcile observations. One
+  foreground fix establishes presence without requiring a boundary crossing;
+  state reaches the backend and existing ordinary/Pulse inputs, not just the UI.
+- Clear presence/monitor/upload status, direct system-settings permission button,
+  and larger location/radius editing controls. System region monitoring is not
+  continuous GPS and cannot guarantee immediate background delivery.
+- Optional native App Intent recording with local-first persistence, independent
+  recipient credentials/ACK/retries and a 7-day queued ingestion route. The legacy
+  route retains its 10-minute window. A second compatible backend is optional and
+  must be supplied by the operator; no system Screen Time/history import.
+- Portable synthetic Swift model checks and queued route/store regressions.
+
+### Publication verification
+
+- **137 focused backend tests passed** (geofences, location, app events/queued
+  ingestion, server/auth, notifications, files, health requests and voice regressions).
+- **80 actual Swift model checks passed**: 29 geofence and 51 activity-queue cases.
+- Unsigned generic iOS Simulator build succeeded: `com.example.cove`, build86,
+  empty signing team. No simulator was launched or phone installed for publication.
+- Initial backend command used an unavailable interpreter name and ran no tests;
+  the corrected Python3.12 invocation completed the focused suite successfully.
+- Public credential-pattern and personal-identifier/path/signing checks passed.
+  Public-only permission defaults, optional-memory guards, generic identity and
+  original synthetic audio fixtures were preserved. This is not a security audit
+  certification or a claim that the older entire suite has been rerun.
+- No real model, paid voice, Apple location, APNs or production request was made
+  for publication. Hardware, background crossings, Shortcuts automation and
+  natural model behavior need operator-authorized device acceptance.
+
+
 ## 2026-11-01 — public source refresh (client build 82)
 
 Incremental update on the existing sanitized public history; no private repository

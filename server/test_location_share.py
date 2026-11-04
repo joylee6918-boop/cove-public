@@ -2,6 +2,7 @@
 import copy
 import json
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from location_share import LocationShare, LocationError, iso, tools
@@ -157,7 +158,7 @@ class CoveLocationTests(unittest.TestCase):
         self.service.data.save_access({'enabled': True, 'revision': grant['revision'], 'deviceID': 'phone'})
 
     def tearDown(self):
-        self.service.data.close(); self.store.close(); self.temp.cleanup()
+        self.service.data.close(); self.service.geofences.close(); self.store.close(); self.temp.cleanup()
 
     def request(self):
         return self.service.tool('owner-turn', 'turn', 'cove_request_location', {'reason': 'Synthetic fixture'}, 'fixture')['request']
@@ -201,7 +202,8 @@ class CoveLocationHTTPTests(unittest.TestCase):
         from storage import Store
         from cove import Application
         from http.server import ThreadingHTTPServer
-        from urllib.request import Request, urlopen
+        from urllib.request import Request, build_opener, ProxyHandler
+        urlopen = build_opener(ProxyHandler({})).open  # loopback must never use an external proxy
         from urllib.error import HTTPError
         import threading
         with tempfile.TemporaryDirectory() as root:
@@ -224,6 +226,17 @@ class CoveLocationHTTPTests(unittest.TestCase):
                 self.assertEqual(code, 200); self.assertTrue(granted['access']['enabled'])
                 self.assertEqual(call('/v1/location/tools/request', {'reason': 'fixture'})[0], 404)
                 self.assertEqual(call('/v1/location/status?unexpected=true')[0], 400)
+                self.assertEqual(call('/v1/location/geofences/status', auth=False)[0], 401)
+                code, value = call('/v1/location/geofences/status')
+                self.assertEqual(code, 200); self.assertFalse(value['access']['enabled'])
+                body = dict(expectedRevision=value['access']['revision'], revision='fixture-fence', deviceID='fixture',
+                            enabled=True, places=[{'id':'home', 'radiusMeters':300}])
+                self.assertEqual(call('/v1/location/geofences/config', body)[0], 200)
+                event = dict(id='fixture-event', revision='fixture-fence', deviceID='fixture', sequence=1,
+                             placeID='home', state='outside', kind='transition', observedAt=iso(time.time()))
+                self.assertEqual(call('/v1/location/geofences/event', event)[0], 200)
+                self.assertEqual(call('/v1/location/geofences/status')[1]['latest'][0]['state'], 'outside')
+                self.assertEqual(store.db.execute('SELECT count(*) FROM jobs').fetchone()[0], 0)
             finally:
                 server.shutdown(); server.server_close(); app.close(); store.close()
 

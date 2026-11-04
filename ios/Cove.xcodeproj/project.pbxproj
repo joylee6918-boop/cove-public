@@ -35,6 +35,7 @@
 		26B319B1B9A2EB4E1CADC7A8 /* CoveHealthArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = D62D402FD72123871B81EBD1 /* CoveHealthArchive.swift */; };
 		29B94667AD0243F04B82A13B /* CoveVoiceRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8145A38DB2FA6FAB24F979C3 /* CoveVoiceRecorder.swift */; };
 		2B245E7FF6578AEC61F555CB /* CoveStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39CB4EC56D665A6B6122B8D7 /* CoveStore.swift */; };
+		2D1D0EEF55E22710BBF7171D /* GeofenceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38D99A3C9411D35984B52DF8 /* GeofenceModels.swift */; };
 		3060238F16062180AD630B97 /* cmark-gfm in Frameworks */ = {isa = PBXBuildFile; productRef = 7E5EFD2583E0FDBA9297A78C /* cmark-gfm */; };
 		30D5C5B232F9CDCBA77572DE /* CoveVoiceNoteUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F873FBFFC4BB44FB491AF45D /* CoveVoiceNoteUITests.swift */; };
 		3170E81B34E5CD693A88C46D /* PulseDashboardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5721029235B835327160A3B1 /* PulseDashboardTests.swift */; };
@@ -54,6 +55,7 @@
 		461ED87164B8B8BAA2D0C851 /* CoveJSONTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AF76382ABE90093F98568B4 /* CoveJSONTests.swift */; };
 		488D8060AD8C95762AE2E50B /* CoveAttachmentReview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40C5C7621DB7C2202D2E74D2 /* CoveAttachmentReview.swift */; };
 		49636A189E07BA48DFEF9177 /* TerminalContextTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF43ECF8BE141F4A657CA694 /* TerminalContextTests.swift */; };
+		4A1218B36A07CA72F88F9F50 /* CoveActivityRecordingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14CE8D20AC0FCECD55683D44 /* CoveActivityRecordingView.swift */; };
 		4B5E447E4605CA0D0F1C248D /* MessageDisplayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFD6A3A03FACD9F12AE0E8A6 /* MessageDisplayTests.swift */; };
 		4E0D6E2ADF8FA1527EE767C1 /* CoveHomeDashboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7868E71FFC83813F4023F14A /* CoveHomeDashboard.swift */; };
 		559E2910C24539767CB4053F /* MarkdownMessageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D8E498DA744C862C6A1CC06 /* MarkdownMessageTests.swift */; };
@@ -96,6 +98,7 @@
 		A8EC5F4FC112E1A58E3FC096 /* CoveHomeMemories.swift in Sources */ = {isa = PBXBuildFile; fileRef = 476CDB68E4E75CBDBCC3067E /* CoveHomeMemories.swift */; };
 		A9D1BAB888BEE359A56F7A99 /* CoveHistorySearchUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF8D1D516EDB3F1DACCC0A5D /* CoveHistorySearchUITests.swift */; };
 		ABF76FBFF6F044E7128AE0F2 /* CoveVoiceHoldButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CDA7D4F007C91EFF06D38B /* CoveVoiceHoldButton.swift */; };
+		AEB19F6A3981DCE54E80117B /* GeofenceSharing.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5FEEA43F41C8B5FD14D05BA /* GeofenceSharing.swift */; };
 		B29B523102AABF6D47159B3C /* CoveHealthHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B0EAD5722F3DD56554CC63A /* CoveHealthHistoryView.swift */; };
 		B29CAC970E74B762290416BF /* CoveVoiceMessageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72A960EB71C990D70A39C6CF /* CoveVoiceMessageView.swift */; };
 		B522421A2CC98104FCC311ED /* CoveBluetoothConnection.swift in Sources */ = {isa = PBXBuildFile; fileRef = A727DCF28F112318F3620F50 /* CoveBluetoothConnection.swift */; };
@@ -103,15 +106,18 @@
 		B6893E420B140E9669AC5F2D /* AttachmentOutboxTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D1D46792ED31A46496D30BC /* AttachmentOutboxTests.swift */; };
 		B6B905784C494674FF8FE868 /* CoveSearchHighlight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 517F8DADCF82CAF0B92917A5 /* CoveSearchHighlight.swift */; };
 		BBFFDE26844936D2C49E4ECE /* CoveAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A51E7EFD04774436A205E87 /* CoveAppearance.swift */; };
+		BC6B6DD484610AB44A69396A /* AppActivityQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77DC3471EBB7ECA567774A83 /* AppActivityQueue.swift */; };
 		BCA3DD99EC7E80C2D0C7987C /* CoveTmuxModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB0BD9EBE7911A2B12E9174A /* CoveTmuxModel.swift */; };
 		BE2F09B360805CD68962AF19 /* CoveTravel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6CB22F2EAB70797DC620AAA /* CoveTravel.swift */; };
 		BF3320CA1FFF0E4E7BFBDC58 /* CoveVoiceWaveformTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5D3E6EEF6AB6AE6EF66844A /* CoveVoiceWaveformTests.swift */; };
 		C3AC0ABC6132A10FCCED24DE /* CoveConnectionRecoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDF6D724BA23FD19F3E15480 /* CoveConnectionRecoveryTests.swift */; };
 		C61EF2085FE3A6CD84579721 /* CovePhotoLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E72DA99A4C0FECE8F990BBC /* CovePhotoLibrary.swift */; };
 		C66294F4182B12C625A7ACA8 /* CoveRealtimeModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BBBAF9326A1FDDA0D5A3C85 /* CoveRealtimeModel.swift */; };
+		C786588BC2F0368DA7400320 /* CoveGeofences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0930EDE230538D6CB79AB081 /* CoveGeofences.swift */; };
 		CADD2D77D7464EB761CE2F9D /* CoveRealtimeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4D084F711B03690411837A3 /* CoveRealtimeView.swift */; };
 		CD9DB1E6FFCD6BE3DF72B2ED /* CoveTravelAlbumViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9CBF4E35AF4781039D0F954 /* CoveTravelAlbumViews.swift */; };
 		CDA172C7F3D192D6B0475DF4 /* CoveShellModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FC38AF46F3B257593D20923 /* CoveShellModel.swift */; };
+		D35DCD671BD8045B655962CF /* CoveActivityRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B04B7DC5C83D441B2E5577C2 /* CoveActivityRecorder.swift */; };
 		D949C6D5520EDE5F16F8E476 /* CoveTerminalTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB8975344B4D06E6719ED17E /* CoveTerminalTests.swift */; };
 		DB6080E911DC0CFCEABD3551 /* CoveWallet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA85F089FB97ECAAB5AE2569 /* CoveWallet.swift */; };
 		DBA55981C4E9AE36A4EFF210 /* CoveWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70FFC2C9BBFD5E2A0A433E05 /* CoveWidgetView.swift */; };
@@ -134,6 +140,7 @@
 		F73C633D9976DA4B1CD67000 /* CoveCollarPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEFB7AC22A3F9F1A96DBFDDF /* CoveCollarPanel.swift */; };
 		F74CCE3C23B17140E8C092FF /* CoveWalletTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6750F8F792EA4EBD36A8352 /* CoveWalletTests.swift */; };
 		F96996782DE848E7EB41FC91 /* CoveFitnessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10F3A91DCC59C07C8D7CD42A /* CoveFitnessView.swift */; };
+		FBEB5C00E8D3B01C0AC7E4EC /* AppActivityIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1957A3BB063FEB191664432 /* AppActivityIntents.swift */; };
 		FD1EA25F39EC8EFA39655C47 /* CoveHealthRefreshPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABFE8EB258BE8F41FD4DC9A8 /* CoveHealthRefreshPolicyTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -160,9 +167,11 @@
 		04696D0AF4894F55484CD5D0 /* CoveFitnessTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveFitnessTests.swift; sourceTree = "<group>"; };
 		07534B8783E64DFED1471860 /* RichPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichPreview.swift; sourceTree = "<group>"; };
 		07AFFA99F48B8CC2FB3000DA /* CoveLaunchHugAnimation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveLaunchHugAnimation.swift; sourceTree = "<group>"; };
+		0930EDE230538D6CB79AB081 /* CoveGeofences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveGeofences.swift; sourceTree = "<group>"; };
 		0B0EAD5722F3DD56554CC63A /* CoveHealthHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveHealthHistoryView.swift; sourceTree = "<group>"; };
 		1099F7F6266BA533B72D638F /* CoveLedgerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveLedgerTests.swift; sourceTree = "<group>"; };
 		10F3A91DCC59C07C8D7CD42A /* CoveFitnessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveFitnessView.swift; sourceTree = "<group>"; };
+		14CE8D20AC0FCECD55683D44 /* CoveActivityRecordingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveActivityRecordingView.swift; sourceTree = "<group>"; };
 		15DEE6A7214D20D6D94ECE91 /* CoveVoiceCompressedTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveVoiceCompressedTests.swift; sourceTree = "<group>"; };
 		1B634C6BF2067E1B5F34DA0F /* CoveWidgetPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveWidgetPreview.swift; sourceTree = "<group>"; };
 		1C37097332620060F454B459 /* CoveWallpaperTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveWallpaperTests.swift; sourceTree = "<group>"; };
@@ -178,6 +187,7 @@
 		2CF0F0CBFF98872FE7B48DAE /* CoveShellView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveShellView.swift; sourceTree = "<group>"; };
 		2FC38AF46F3B257593D20923 /* CoveShellModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveShellModel.swift; sourceTree = "<group>"; };
 		33CDA7D4F007C91EFF06D38B /* CoveVoiceHoldButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveVoiceHoldButton.swift; sourceTree = "<group>"; };
+		38D99A3C9411D35984B52DF8 /* GeofenceModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeofenceModels.swift; sourceTree = "<group>"; };
 		38FBF639D95A566D5D1DBAB1 /* CoveMessageSearchSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveMessageSearchSheet.swift; sourceTree = "<group>"; };
 		391E30687A2A65F96C19BF73 /* CoveLedger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveLedger.swift; sourceTree = "<group>"; };
 		399F32CC6B92B4DA4BEAB58C /* CoveStickerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveStickerTests.swift; sourceTree = "<group>"; };
@@ -207,6 +217,7 @@
 		72A960EB71C990D70A39C6CF /* CoveVoiceMessageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveVoiceMessageView.swift; sourceTree = "<group>"; };
 		7438117C1CAA55BFF6C89524 /* CoveSessionContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveSessionContext.swift; sourceTree = "<group>"; };
 		77B45E77F026A13693D98F18 /* Views.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views.swift; sourceTree = "<group>"; };
+		77DC3471EBB7ECA567774A83 /* AppActivityQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppActivityQueue.swift; sourceTree = "<group>"; };
 		7868E71FFC83813F4023F14A /* CoveHomeDashboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveHomeDashboard.swift; sourceTree = "<group>"; };
 		7BBBAF9326A1FDDA0D5A3C85 /* CoveRealtimeModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveRealtimeModel.swift; sourceTree = "<group>"; };
 		7CB809283B541E44EE429898 /* CoveHistorySearchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveHistorySearchTests.swift; sourceTree = "<group>"; };
@@ -227,6 +238,7 @@
 		98E22FD35968DAEC8AC5309D /* CoveUsagePresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveUsagePresentationTests.swift; sourceTree = "<group>"; };
 		9D900E5C1878AFDB796C9980 /* CoveVoiceBubbleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveVoiceBubbleTests.swift; sourceTree = "<group>"; };
 		A062ED976C491920D7872962 /* CoveCompactTabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveCompactTabBar.swift; sourceTree = "<group>"; };
+		A1957A3BB063FEB191664432 /* AppActivityIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppActivityIntents.swift; sourceTree = "<group>"; };
 		A445D52EE7269CD78440F0A5 /* CoveSystemCapabilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveSystemCapabilities.swift; sourceTree = "<group>"; };
 		A5D3E6EEF6AB6AE6EF66844A /* CoveVoiceWaveformTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveVoiceWaveformTests.swift; sourceTree = "<group>"; };
 		A611BE440F2F63E110100D9C /* HomeMemoriesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeMemoriesTests.swift; sourceTree = "<group>"; };
@@ -240,6 +252,7 @@
 		ABFE8EB258BE8F41FD4DC9A8 /* CoveHealthRefreshPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveHealthRefreshPolicyTests.swift; sourceTree = "<group>"; };
 		AD3FF0D135AC6CBB3700D341 /* CoveSystemCapabilitiesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveSystemCapabilitiesView.swift; sourceTree = "<group>"; };
 		ADE248A13F4BA4637A28018A /* CoveHealthArchiveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveHealthArchiveTests.swift; sourceTree = "<group>"; };
+		B04B7DC5C83D441B2E5577C2 /* CoveActivityRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveActivityRecorder.swift; sourceTree = "<group>"; };
 		B438F94C337151ED63B9444A /* Cove.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Cove.entitlements; sourceTree = "<group>"; };
 		B5065D657BF5029FC51038EC /* CoveBluetoothView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveBluetoothView.swift; sourceTree = "<group>"; };
 		B50CE3A322D4EE8546BA7FE6 /* CoveTravelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveTravelTests.swift; sourceTree = "<group>"; };
@@ -279,6 +292,7 @@
 		EFA252EA52A6537C594965F4 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		F05654D0DD84BE9A8297929A /* CoveHomeLifeModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveHomeLifeModel.swift; sourceTree = "<group>"; };
 		F231FEF1A87D5B972B9C573B /* CoveLaunchPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveLaunchPresentationTests.swift; sourceTree = "<group>"; };
+		F5FEEA43F41C8B5FD14D05BA /* GeofenceSharing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeofenceSharing.swift; sourceTree = "<group>"; };
 		F873FBFFC4BB44FB491AF45D /* CoveVoiceNoteUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveVoiceNoteUITests.swift; sourceTree = "<group>"; };
 		FA85F089FB97ECAAB5AE2569 /* CoveWallet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveWallet.swift; sourceTree = "<group>"; };
 		FC54F81638AEFF775D42535F /* CoveDeviceAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoveDeviceAction.swift; sourceTree = "<group>"; };
@@ -331,10 +345,14 @@
 		94AF4A41555D38E99AE04375 /* Cove */ = {
 			isa = PBXGroup;
 			children = (
+				A1957A3BB063FEB191664432 /* AppActivityIntents.swift */,
+				77DC3471EBB7ECA567774A83 /* AppActivityQueue.swift */,
 				B9F45C9CBBF04C7806DB3D30 /* Assets.xcassets */,
 				8377BC3E85AEE179A4DE80A6 /* AttachmentViews.swift */,
 				0377806BA3AE12A18C3608C6 /* Cove-Local.entitlements */,
 				B438F94C337151ED63B9444A /* Cove.entitlements */,
+				B04B7DC5C83D441B2E5577C2 /* CoveActivityRecorder.swift */,
+				14CE8D20AC0FCECD55683D44 /* CoveActivityRecordingView.swift */,
 				4BBBFA2178F6FDB897BA8F0E /* CoveApp.swift */,
 				EDBA0134EA925988D7D1FC3E /* CoveAppActivityView.swift */,
 				5A51E7EFD04774436A205E87 /* CoveAppearance.swift */,
@@ -350,6 +368,7 @@
 				8BE1A24F515B8F12A86203E9 /* CoveDeviceBridge.swift */,
 				90F7CDE5088DC576E5F21570 /* CoveFitness.swift */,
 				10F3A91DCC59C07C8D7CD42A /* CoveFitnessView.swift */,
+				0930EDE230538D6CB79AB081 /* CoveGeofences.swift */,
 				D62D402FD72123871B81EBD1 /* CoveHealthArchive.swift */,
 				0B0EAD5722F3DD56554CC63A /* CoveHealthHistoryView.swift */,
 				C05B46B7A31E7BB7E339666A /* CoveHealthRefreshPolicy.swift */,
@@ -394,6 +413,8 @@
 				3AF89724DB10213F13A5C96E /* CoveWidgetMarkdown.swift */,
 				1B634C6BF2067E1B5F34DA0F /* CoveWidgetPreview.swift */,
 				70FFC2C9BBFD5E2A0A433E05 /* CoveWidgetView.swift */,
+				38D99A3C9411D35984B52DF8 /* GeofenceModels.swift */,
+				F5FEEA43F41C8B5FD14D05BA /* GeofenceSharing.swift */,
 				7166656FC7FE5E0BD7BE0471 /* HealthSync.swift */,
 				A8027850263DDDBF05074C48 /* Info.plist */,
 				DA1B31F88594576409BA1DCA /* LocationSharing.swift */,
@@ -677,7 +698,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FBEB5C00E8D3B01C0AC7E4EC /* AppActivityIntents.swift in Sources */,
+				BC6B6DD484610AB44A69396A /* AppActivityQueue.swift in Sources */,
 				3FCB4859617134F538BBE384 /* AttachmentViews.swift in Sources */,
+				D35DCD671BD8045B655962CF /* CoveActivityRecorder.swift in Sources */,
+				4A1218B36A07CA72F88F9F50 /* CoveActivityRecordingView.swift in Sources */,
 				138DB806F04BD8DB6337D47A /* CoveApp.swift in Sources */,
 				6562F15EFCAAC13F493AB82F /* CoveAppActivityView.swift in Sources */,
 				BBFFDE26844936D2C49E4ECE /* CoveAppearance.swift in Sources */,
@@ -693,6 +718,7 @@
 				239D19F3ECFC5FF1E8F161CA /* CoveDeviceBridge.swift in Sources */,
 				EA7D18ADD33C7CCE1F99074F /* CoveFitness.swift in Sources */,
 				F96996782DE848E7EB41FC91 /* CoveFitnessView.swift in Sources */,
+				C786588BC2F0368DA7400320 /* CoveGeofences.swift in Sources */,
 				26B319B1B9A2EB4E1CADC7A8 /* CoveHealthArchive.swift in Sources */,
 				B29B523102AABF6D47159B3C /* CoveHealthHistoryView.swift in Sources */,
 				7EA0E0C14BBA6042440BADD5 /* CoveHealthRefreshPolicy.swift in Sources */,
@@ -737,6 +763,8 @@
 				9554106B904214FB902F2FC5 /* CoveWidgetMarkdown.swift in Sources */,
 				6B5B4D87DAC7FEFFD9CE81B4 /* CoveWidgetPreview.swift in Sources */,
 				DBA55981C4E9AE36A4EFF210 /* CoveWidgetView.swift in Sources */,
+				2D1D0EEF55E22710BBF7171D /* GeofenceModels.swift in Sources */,
+				AEB19F6A3981DCE54E80117B /* GeofenceSharing.swift in Sources */,
 				7314D6BFAAA8775D18620526 /* HealthSync.swift in Sources */,
 				A0CF95A1555B1B24C02B0F09 /* LocationSharing.swift in Sources */,
 				EAD25B743BC56E156160E221 /* MarkdownMessageView.swift in Sources */,
@@ -918,7 +946,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 82;
+				CURRENT_PROJECT_VERSION = 86;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -986,7 +1014,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 82;
+				CURRENT_PROJECT_VERSION = 86;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
